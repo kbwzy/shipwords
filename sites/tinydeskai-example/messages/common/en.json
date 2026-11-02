@@ -188,5 +188,7 @@
   "common_phone_sending": "Sending…",
   "common_phone_sent": "{count} sent · check your computer",
   "common_phone_failed": "A photo didn't make it. Pick it again.",
-  "common_phone_expired": "This link expired. Get a new code on your computer and scan again."
+  "common_phone_expired": "This link expired. Get a new code on your computer and scan again.",
+  "common_guide_dogs_title": "The Tiny Desk AI dog version",
+  "common_guide_dogs_description": "Which seat to cast your dog in, what photo works, and how paws replace hands in the finished video."
 }

@@ -26,6 +26,11 @@ export const GUIDES = [
     title: m.common_guide_free_title,
     description: m.common_guide_free_description,
   },
+  {
+    path: '/tiny-desk-ai-dogs',
+    title: m.common_guide_dogs_title,
+    description: m.common_guide_dogs_description,
+  },
 ] as const;
 
 export interface FaqItem {

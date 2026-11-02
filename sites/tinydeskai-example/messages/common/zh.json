@@ -188,5 +188,7 @@
   "common_phone_sending": "正在传…",
   "common_phone_sent": "已传 {count} 张 · 去电脑上看",
   "common_phone_failed": "有一张没传上，再选一次。",
-  "common_phone_expired": "链接过期了，在电脑上换个新二维码再扫。"
+  "common_phone_expired": "链接过期了，在电脑上换个新二维码再扫。",
+  "common_guide_dogs_title": "Tiny Desk AI 狗狗版",
+  "common_guide_dogs_description": "狗坐哪个位置、用什么照片，以及成品视频里爪子怎么替换手。"
 }

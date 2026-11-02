@@ -1,0 +1,24 @@
+# TinyDeskAI — 2026-10-29
+
+## Product and positioning
+
+TinyDeskAI is a paid, browser-based generator for AI parody videos of the viral “Outstanding” Tiny Desk edit. Users upload photos for one to five band roles (lead, sax, keys, two backing singers); remaining stage spots can stay as dogs or retain the coach from the viral edit. It returns an approximately 18-second vertical 9:16 MP4, with the song and a silent copy, without requiring a template, prompt, or editing app. The fixed cut is the product: customers choose the people, not the song or edit. ([homepage](https://tinydeskai.io/), [how-to](https://tinydeskai.io/how-to-make-outstanding-tiny-desk-ai-video), [template breakdown](https://tinydeskai.io/outstanding-tiny-desk-ai-template))
+
+The pitch is low-friction, timely fan parody: replace one or several people in a recognizable losing-coach meme, potentially for the next sports weekend. Its stated differentiators are five-person casting at one price, 720p output, whole-person likeness (face, hair, clothes), no watermark, a silent backup copy, and a 7–10 minute typical render. Site says it uses Kuaishou Kling 4.0 edit mode in one pass; these are product-owner claims, not independently benchmarked results. ([homepage](https://tinydeskai.io/), [how-to](https://tinydeskai.io/how-to-make-outstanding-tiny-desk-ai-video), [template breakdown](https://tinydeskai.io/outstanding-tiny-desk-ai-template))
+
+## Features, price, and terms
+
+- One-time packs: 1 video $9.98; 3 for $24.99 ($8.33 each); 10 for $59.99 ($6 each). Credits never expire; no free render or subscription. Same price for 1–5 people. ([homepage pricing and FAQ](https://tinydeskai.io/#pricing), [refunds](https://tinydeskai.io/refunds))
+- Typical flow: upload one clear, front-facing photo per person, assign stage spots, confirm parody, pay/render, then download. Site says renders usually take 7–10 minutes, and failed, refused, or cancelled renders return credits automatically. Unused packs are refundable within 14 days; clearly broken outputs can be reported within 7 days. ([how-to](https://tinydeskai.io/how-to-make-outstanding-tiny-desk-ai-video), [refunds](https://tinydeskai.io/refunds))
+- Site permits personal, non-commercial parody and fan edits, prohibits deception, harassment, and advertising/endorsements, and requires adult users and adult subjects. It says it is unaffiliated with NPR, Tiny Desk, Charlie Wilson, and The Gap Band, and does not license the song or footage. ([terms](https://tinydeskai.io/terms), [DMCA/takedown](https://tinydeskai.io/dmca))
+- Privacy page says uploaded photos are deleted from its storage within two days, photos are sent to its AI video provider, and finished videos remain in the account until deletion is requested. This is the operator’s stated policy. ([privacy](https://tinydeskai.io/privacy))
+
+## Users and traction: verification limits
+
+No independently verifiable TinyDeskAI customer, account, paid-order, or generation count was found on the site or in its first-party linked pages; the site does not publish those metrics. Homepage “trend reference” examples are explicitly identified as TikTok posts not made with the service. The site’s meme explainer claims that one coach edit passed 288,000 likes and says US searches rose from October 21, but neither claim is independently established by the linked primary evidence here; TikTok pages were not accessible for verification. Treat these as first-party editorial/marketing claims, not TinyDeskAI traction. ([homepage](https://tinydeskai.io/), [meme explainer](https://tinydeskai.io/outstanding-tiny-desk-meme))
+
+The site’s meme explainer links to creator posts including [the NFL coaches’ desk](https://www.tiktok.com/@theburnerfromhe11/video/7698160711830129934), but direct TikTok access timed out, so post metrics could not be checked independently. No official TinyDeskAI social/company account or first-party announcement with verifiable customer counts was linked or located. No traffic estimate is used.
+
+## Sources and scope
+
+All product, price, feature, policy, and positioning descriptions above come from the requested domain’s own [homepage](https://tinydeskai.io/) and its linked [how-to](https://tinydeskai.io/how-to-make-outstanding-tiny-desk-ai-video), [template](https://tinydeskai.io/outstanding-tiny-desk-ai-template), [meme explainer](https://tinydeskai.io/outstanding-tiny-desk-meme), [pricing section](https://tinydeskai.io/#pricing), [refund policy](https://tinydeskai.io/refunds), [privacy policy](https://tinydeskai.io/privacy), [terms](https://tinydeskai.io/terms), and [DMCA page](https://tinydeskai.io/dmca). The product site links to [NPR Music’s official Charlie Wilson concert on YouTube](https://www.youtube.com/watch?v=J3jUEB7qmt8), the primary source for the original performance; no NPR source validates TinyDeskAI’s product or traction claims.
