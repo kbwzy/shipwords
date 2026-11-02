@@ -16,10 +16,17 @@ interface MockEnv {
   STRIPE_SECRET_KEY?: string;
   PAYPAL_CLIENT_ID?: string;
   PAYPAL_ENV?: string;
+  WAFFO_MERCHANT_ID?: string;
+  WAFFO_PRIVATE_KEY?: string;
+  WAFFO_ENVIRONMENT?: string;
 }
 
 export function mockMode(env: MockEnv): MockMode | null {
   if (!env.UPSTREAM_MOCK || !env.APP_URL) return null;
+  // Waffo API key mode is determined by the key itself, not by this setting;
+  // until it can be verified, no Waffo credential may coexist with mock output.
+  if (env.WAFFO_MERCHANT_ID || env.WAFFO_PRIVATE_KEY ||
+      (env.WAFFO_ENVIRONMENT && env.WAFFO_ENVIRONMENT !== 'test')) return null;
   let host: string;
   try {
     host = new URL(env.APP_URL).hostname;

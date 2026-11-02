@@ -21,6 +21,14 @@ export interface CoreEnv {
   PAYPAL_WEBHOOK_ID?: string;
   /** "sandbox" uses the PayPal sandbox; anything else uses live. */
   PAYPAL_ENV?: string;
+  WAFFO_MERCHANT_ID?: string;
+  WAFFO_PRIVATE_KEY?: string;
+  /** "test" or "prod"; defaults to test. */
+  WAFFO_ENVIRONMENT?: string;
+  /** In prod, billing stays fail-closed unless this is explicitly "true". */
+  WAFFO_BILLING_ENABLED?: string;
+  /** Store short ID (STO_...) used for the customer portal. */
+  WAFFO_STORE_ID?: string;
 
   /** reCAPTCHA (Google Cloud): the client uses the site key; the server calls createAssessment with the project ID and API key. */
   RECAPTCHA_SITE_KEY: string;

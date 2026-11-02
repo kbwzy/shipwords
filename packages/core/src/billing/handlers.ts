@@ -54,6 +54,7 @@ export async function handleCheckout(deps: BillingDeps, request: Request): Promi
   // Price and credits come only from the server-side catalog; never trust any amount in the request.
   const product = body?.productId ? findProduct(deps.site, body.productId) : undefined;
   if (!product) return errorResponse(400, 'unknown_product');
+  if (!deps.provider.enabled) return errorResponse(503, 'billing_unavailable');
 
   const customerRef = await ensureCustomer(deps, user);
   const orderId = newId('ord');

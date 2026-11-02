@@ -160,6 +160,7 @@ export function webhookTarget(event: Stripe.Event): WebhookTarget | null {
 
 export class StripeProvider implements PaymentProvider {
   readonly name = PROVIDER;
+  readonly enabled = true;
   private readonly stripe: Stripe;
 
   constructor(

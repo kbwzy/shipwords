@@ -14,6 +14,7 @@ import {
 import { PayPalProvider } from './billing/paypal';
 import type { PaymentProvider } from './billing/provider';
 import { StripeProvider } from './billing/stripe';
+import { WaffoProvider } from './billing/waffo';
 import { getBalance } from './credits/ledger';
 import { createDb, type Db } from './db/client';
 import type { CoreEnv } from './env';
@@ -44,6 +45,18 @@ function createProvider(site: SiteConfig, env: CoreEnv): PaymentProvider {
       webhookId: env.PAYPAL_WEBHOOK_ID ?? '',
       sandbox: env.PAYPAL_ENV === 'sandbox',
       products: site.products,
+    });
+  }
+  if (site.billing.provider === 'waffo') {
+    return new WaffoProvider({
+      merchantId: required(env, 'WAFFO_MERCHANT_ID'),
+      privateKey: required(env, 'WAFFO_PRIVATE_KEY'),
+      environment: env.WAFFO_ENVIRONMENT === 'prod' || env.WAFFO_ENVIRONMENT === 'production' ? 'prod' : 'test',
+      storeId: env.WAFFO_STORE_ID,
+      products: site.products,
+      // Billing is always fail-closed until WAFFO_BILLING_ENABLED=true is set
+      // explicitly; the environment key still decides test vs prod checkouts.
+      enabled: env.WAFFO_BILLING_ENABLED === 'true',
     });
   }
   return new StripeProvider({

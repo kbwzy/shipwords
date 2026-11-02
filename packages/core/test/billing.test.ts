@@ -61,6 +61,7 @@ const site = defineSite({
 /** In-memory fake provider: tests mutate payments / subscriptions directly, then send the matching webhook. */
 class FakeProvider implements PaymentProvider {
   readonly name = 'fake';
+  readonly enabled = true;
   payments = new Map<string, PaymentFact>();
   subscriptions = new Map<string, SubscriptionFact>();
   checkouts = new Map<string, CheckoutFact>();

@@ -13,6 +13,7 @@
     "check": "pnpm typecheck && pnpm test"
   },
   "dependencies": {
+    "@waffo/pancake-ts": "0.26.0",
     "better-auth": "1.7.14",
     "drizzle-orm": "0.45.4",
     "stripe": "23.0.1",

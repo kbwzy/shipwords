@@ -10,7 +10,7 @@ interface ProductBase {
   id: string;
   name: string;
   price: Price;
-  /** Product IDs for providers that need pre-created products. Stripe uses inline prices and needs none; PayPal subscriptions need a Plan ID (refs.paypal). */
+  /** Product IDs for providers that need pre-created products (refs.paypal, refs.waffo). Stripe uses inline prices and needs none. */
   refs?: Record<string, string>;
 }
 
@@ -65,7 +65,8 @@ export interface SiteConfig {
         /** Enable Stripe Tax automatic tax calculation; configure it in the Stripe dashboard first. */
         automaticTax: boolean;
       }
-    | { provider: 'paypal' };
+    | { provider: 'paypal' }
+    | { provider: 'waffo' };
   analytics?: {
     ga4?: string;
     clarity?: string;
@@ -84,6 +85,14 @@ export function defineSite<const T extends SiteConfig>(config: T): T {
     }
     if (config.billing.provider === 'paypal' && product.kind === 'subscription' && !product.refs?.paypal) {
       throw new Error(`product ${product.id}: paypal subscriptions need refs.paypal (plan id)`);
+    }
+    if (config.billing.provider === 'waffo' && !/^PROD_[A-Za-z0-9_-]+$/.test(product.refs?.waffo ?? '')) {
+      throw new Error(`product ${product.id}: waffo products need refs.waffo (PROD_... id)`);
+    }
+    // The adapter currently resolves one-time payment attribution only. Keep subscriptions
+    // closed until Waffo subscription metadata and renewal reconciliation are verified.
+    if (config.billing.provider === 'waffo' && product.kind === 'subscription') {
+      throw new Error(`product ${product.id}: waffo subscriptions are not supported yet`);
     }
   }
   return config;

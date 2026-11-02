@@ -143,6 +143,19 @@ describe('mock switch', () => {
     );
     expect(createAdapters({ ...base, UPSTREAM_MOCK: '' }).yir).not.toBeInstanceOf(MockAdapter);
   });
+
+  it('fails closed for Waffo credentials or a production or unknown environment', () => {
+    const demo = { UPSTREAM_MOCK: '1', APP_URL: 'https://demo.example.com', STRIPE_SECRET_KEY: 'sk_test_x' };
+    for (const extra of [
+      { WAFFO_MERCHANT_ID: 'merchant', WAFFO_ENVIRONMENT: 'test' },
+      { WAFFO_PRIVATE_KEY: 'key', WAFFO_ENVIRONMENT: 'test' },
+      { WAFFO_ENVIRONMENT: 'prod' },
+      { WAFFO_ENVIRONMENT: 'production' },
+      { WAFFO_ENVIRONMENT: 'typo' },
+    ]) expect(mockMode({ ...demo, ...extra })).toBeNull();
+    expect(mockMode({ ...demo, APP_URL: 'http://localhost', WAFFO_PRIVATE_KEY: 'key' })).toBeNull();
+    expect(() => createAdapters({ ...demo, WAFFO_PRIVATE_KEY: 'key', YIR_API_KEY: 'x' } as unknown as JobsEnv)).toThrow(/refusing/);
+  });
 });
 
 describe('fake upstream', () => {

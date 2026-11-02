@@ -138,6 +138,8 @@ export interface GrantInput {
   /** Millisecond timestamp; null or omitted means never expires. */
   expiresAt?: number | null;
   ref?: string | null;
+  /** Revoke part of this grant atomically, before any credits become spendable. */
+  initialRevoke?: { amount: number; idemKey: string; ref?: string | null };
 }
 
 /** Grants credits. If the user has debt, it's repaid first and only the rest becomes available. */
@@ -147,10 +149,20 @@ export async function grantCredits(
   extra: BatchItem[] = [],
 ): Promise<LedgerResult> {
   assertPositiveInt(input.amount);
+  const revoked = input.initialRevoke?.amount ?? 0;
+  if (
+    !Number.isSafeInteger(revoked) ||
+    revoked < 0 ||
+    revoked > input.amount ||
+    (input.initialRevoke && revoked === 0)
+  ) {
+    throw new Error('invalid initial credit revocation');
+  }
   return runIdempotent(db, input.idemKey, async () => {
     const account = await readAccount(db, input.userId);
-    const debtPay = Math.min(account.debt, input.amount);
+    const debtPay = Math.min(account.debt, input.amount - revoked);
     const ledgerId = newId('cl');
+    const lotId = newId('lot');
     const items: BatchItem[] = [
       db.insert(creditLedger).values({
         id: ledgerId,
@@ -162,16 +174,31 @@ export async function grantCredits(
         ref: input.ref ?? input.sourceRef ?? null,
       }),
       db.insert(creditLots).values({
-        id: newId('lot'),
+        id: lotId,
         userId: input.userId,
         source: input.source,
         sourceRef: input.sourceRef ?? null,
         amount: input.amount,
-        remaining: input.amount - debtPay,
+        remaining: input.amount - revoked - debtPay,
         expiresAt: input.expiresAt ?? null,
       }),
       commitAccount(db, input.userId, account, -debtPay),
     ];
+    if (input.initialRevoke) {
+      const revokeId = newId('cl');
+      items.push(
+        db.insert(creditLedger).values({
+          id: revokeId,
+          userId: input.userId,
+          kind: 'revoke',
+          delta: -revoked,
+          debtDelta: 0,
+          idemKey: input.initialRevoke.idemKey,
+          ref: input.initialRevoke.ref ?? input.sourceRef ?? null,
+        }),
+        db.insert(creditAllocations).values({ ledgerId: revokeId, lotId, amount: revoked }),
+      );
+    }
     items.push(...extra);
     return { ledgerId, items };
   });

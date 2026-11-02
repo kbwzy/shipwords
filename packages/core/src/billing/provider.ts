@@ -84,6 +84,12 @@ export class WebhookSignatureError extends Error {
 
 export interface PaymentProvider {
   readonly name: string;
+  /**
+   * Billing is fail-closed until the provider integration has been verified in
+   * an isolated environment (Waffo test). Disabled providers refuse checkout,
+   * webhooks and reconciliation with a clear error.
+   */
+  readonly enabled: boolean;
   createCustomer(user: { id: string; email: string; name: string; siteId: string }): Promise<string>;
   createCheckout(request: CheckoutRequest): Promise<{ url: string; checkoutRef: string }>;
   /** Throws WebhookSignatureError on an invalid signature. */

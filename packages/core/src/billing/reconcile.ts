@@ -1,7 +1,7 @@
 import { and, eq, ne, type SQLWrapper, sql } from 'drizzle-orm';
 import { grantCredits, revokeCredits } from '../credits/ledger';
-import { type Db, newId } from '../db/client';
-import { creditLots, orders, payments, subscriptions } from '../db/schema';
+import { type Db, isConstraintError, newId } from '../db/client';
+import { creditAccounts, creditLots, orders, payments, subscriptions } from '../db/schema';
 import { findProduct, type SiteConfig } from '../site';
 import type { CheckoutFact, PaymentFact, PaymentProvider, SubscriptionFact, WebhookTarget } from './provider';
 
@@ -61,20 +61,32 @@ function disputeRank(column: SQLWrapper) {
 }
 
 export async function applyPayment(ctx: ReconcileContext, fact: PaymentFact): Promise<ReconcileOutcome> {
+  if (!ctx.provider.enabled) throw new Error(`${ctx.provider.name} billing disabled: payment and refund evidence is unverified`);
   if (!fact.paid) return 'ignored';
-  if (!fact.userId || !fact.productId) {
+  const { db } = ctx;
+  const where = and(eq(payments.provider, fact.provider), eq(payments.paymentRef, fact.paymentRef));
+  const known = await db.query.payments.findFirst({ where });
+  // Once recorded, the payment row is authoritative for ownership. A provider's
+  // later changed or missing metadata must not prevent refund reconciliation.
+  const userId = known?.userId ?? fact.userId;
+  const productId = known?.productId ?? fact.productId;
+  if (!userId || !productId) {
     ctx.log?.('payment without our metadata', { paymentRef: fact.paymentRef });
     return 'unmapped';
   }
-  const { db } = ctx;
-  const where = and(eq(payments.provider, fact.provider), eq(payments.paymentRef, fact.paymentRef));
-  const credits = creditsFor(ctx.site, fact);
-  const known = await db.query.payments.findFirst({ where });
+  const attributedFact = { ...fact, userId, productId };
+  const credits = creditsFor(ctx.site, attributedFact);
+  if (
+    known &&
+    (known.userId !== fact.userId || known.productId !== fact.productId || known.orderId !== fact.orderId)
+  ) {
+    ctx.log?.('payment attribution changed', { paymentRef: fact.paymentRef });
+  }
   // Once a product is removed, new payments can't be granted, but already-granted payments must still be clawed back on refund or chargeback.
   if (!credits && !known) {
     ctx.log?.('payment for unknown product or below list price', {
       paymentRef: fact.paymentRef,
-      productId: fact.productId,
+      productId,
     });
     return 'unmapped';
   }
@@ -88,10 +100,10 @@ export async function applyPayment(ctx: ReconcileContext, fact: PaymentFact): Pr
       provider: fact.provider,
       paymentRef: fact.paymentRef,
       chargeRef: fact.chargeRef,
-      userId: fact.userId,
+      userId,
       orderId: fact.orderId,
       subscriptionRef: fact.subscriptionRef,
-      productId: fact.productId,
+      productId,
       amount: fact.amount,
       currency: fact.currency,
       amountRefunded: fact.amountRefunded,
@@ -112,32 +124,73 @@ export async function applyPayment(ctx: ReconcileContext, fact: PaymentFact): Pr
     });
   const row = await db.query.payments.findFirst({ where });
   if (!row) throw new Error(`payment row missing after upsert: ${fact.paymentRef}`);
+  // Concurrent first observations may disagree about metadata. Do not grant to
+  // the losing attribution; retry against the persisted owner and product.
+  if (row.userId !== userId || row.productId !== productId)
+    throw new Error('payment attribution changed concurrently');
 
   // 2. Grant: the idempotency key is tied to this payment, not order status, so retrying after a failed grant always fills it in.
   if (credits) {
-    const markOrderPaid = fact.orderId
+    const markOrderPaid = row.orderId
       ? [
           db
             .update(orders)
             .set({ status: 'paid', paidAt: fact.paidAt ?? Date.now() })
-            .where(and(eq(orders.id, fact.orderId), eq(orders.status, 'pending'))),
+            .where(and(eq(orders.id, row.orderId), eq(orders.status, 'pending'))),
         ]
       : [];
-    await grantCredits(
-      db,
-      {
-        userId: fact.userId,
-        amount: credits.amount,
-        idemKey: `pay:${fact.provider}:${fact.paymentRef}`,
-        source: credits.source,
-        sourceRef: row.id,
-        expiresAt: credits.expiresAt,
-      },
-      [
-        db.update(payments).set({ creditsGranted: credits.amount }).where(eq(payments.id, row.id)),
-        ...markOrderPaid,
-      ],
-    );
+    let grantRow = row;
+    for (let attempt = 1; ; attempt++) {
+      const initialRevoked = targetRevoked(
+        {
+          amount: grantRow.amount,
+          amountRefunded: grantRow.amountRefunded,
+          dispute: grantRow.disputeStatus as PaymentFact['dispute'],
+        },
+        credits.amount,
+      );
+      try {
+        await grantCredits(
+          db,
+          {
+            userId,
+            amount: credits.amount,
+            idemKey: `pay:${fact.provider}:${fact.paymentRef}`,
+            source: credits.source,
+            sourceRef: row.id,
+            expiresAt: credits.expiresAt,
+            ...(initialRevoked > 0
+              ? { initialRevoke: { amount: initialRevoked, idemKey: `adj:${row.id}:1`, ref: row.id } }
+              : {}),
+          },
+          [
+            // Abort the whole batch if a newer refund/dispute snapshot landed since
+            // this calculation. Re-read and recompute outside the ledger retry loop.
+            db
+              .update(creditAccounts)
+              .set({
+                debt: sql`case when exists (select 1 from ${payments} where ${payments.id} = ${row.id} and ${payments.amountRefunded} = ${grantRow.amountRefunded} and ${payments.disputeStatus} is ${grantRow.disputeStatus}) then ${creditAccounts.debt} else -1 end`,
+              })
+              .where(eq(creditAccounts.userId, userId)),
+            db
+              .update(payments)
+              .set({
+                creditsGranted: credits.amount,
+                creditsRevoked: initialRevoked,
+                adjustSeq: initialRevoked > 0 ? 1 : 0,
+              })
+              .where(eq(payments.id, row.id)),
+            ...markOrderPaid,
+          ],
+        );
+        break;
+      } catch (error) {
+        if (!isConstraintError(error, 'CHECK') || attempt >= MAX_ADJUST_ATTEMPTS) throw error;
+        const fresh = await db.query.payments.findFirst({ where: eq(payments.id, row.id) });
+        if (!fresh) throw error;
+        grantRow = fresh;
+      }
+    }
   }
 
   // 3. Refunds, chargebacks: move clawed-back credits to the target. The target comes from the merged state in the database, not this fact;
@@ -206,6 +259,7 @@ export async function applySubscription(
   ctx: ReconcileContext,
   fact: SubscriptionFact,
 ): Promise<ReconcileOutcome> {
+  if (!ctx.provider.enabled) throw new Error(`${ctx.provider.name} billing disabled: subscription reconciliation is unverified`);
   if (!fact.userId || !fact.productId) {
     ctx.log?.('subscription without our metadata', { subscriptionRef: fact.subscriptionRef });
     return 'unmapped';

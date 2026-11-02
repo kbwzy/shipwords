@@ -100,6 +100,23 @@ export function createAuth(deps: AuthDeps) {
     env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
       ? { google: { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET } }
       : {};
+  // Email OTP needs the Cloudflare Email binding and a verified sender. Until
+  // those are configured the site can still offer Google sign-in alone.
+  const emailOtp = env.EMAIL && env.EMAIL_FROM
+    ? [
+        emailOTP({
+          otpLength: 6,
+          expiresIn: 600,
+          async sendVerificationOTP({ email, otp }) {
+            await env.EMAIL.send({
+              to: email,
+              from: { email: env.EMAIL_FROM, name: site.name },
+              ...emailCopy(site.defaultLocale).signInCode({ siteName: site.name, otp }),
+            });
+          },
+        }),
+      ]
+    : [];
 
   return betterAuth({
     appName: site.name,
@@ -129,17 +146,7 @@ export function createAuth(deps: AuthDeps) {
       ipAddress: { ipAddressHeaders: ['cf-connecting-ip'] },
     },
     plugins: [
-      emailOTP({
-        otpLength: 6,
-        expiresIn: 600,
-        async sendVerificationOTP({ email, otp }) {
-          await env.EMAIL.send({
-            to: email,
-            from: { email: env.EMAIL_FROM, name: site.name },
-            ...emailCopy(site.defaultLocale).signInCode({ siteName: site.name, otp }),
-          });
-        },
-      }),
+      ...emailOtp,
       ...(google.google ? [oneTap()] : []),
     ],
     databaseHooks: {

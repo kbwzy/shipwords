@@ -353,6 +353,7 @@ const SIGNATURE_HEADERS = {
 
 export class PayPalProvider implements PaymentProvider {
   readonly name = PROVIDER;
+  readonly enabled = true;
   private readonly base: string;
   private token: { value: string; expiresAt: number } | null = null;
 
