@@ -59,6 +59,7 @@
   "common_results_generating": "生成中…",
   "common_results_failed": "失败，积分已退回",
   "common_results_canceled": "已取消",
+  "common_results_attention": "需要处理",
   "common_results_open": "打开",
   "common_account_label": "账户",
   "common_account_title": "账户 — {name}",

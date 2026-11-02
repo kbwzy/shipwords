@@ -1,5 +1,4 @@
 import { openBillingPortal, useAccount } from '@shipwords/core/react/account';
-import { type PublicJob, useGeneration } from '@shipwords/jobs/react';
 import { getRouteApi, Link } from '@tanstack/react-router';
 import { type MouseEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import { authClient } from '~/lib/auth';
@@ -55,41 +54,47 @@ type Order = NonNullable<ReturnType<typeof useAccount>['data']>['orders'][number
 function orderStatus(order: Order) {
   if (order.dispute === 'open') return m.common_account_status_disputed();
   if (order.dispute === 'lost') return m.common_account_status_charged_back();
-  if (order.amountRefunded >= order.amountPaid) return m.common_account_status_refunded();
+  if (order.amountPaid > 0 && order.amountRefunded >= order.amountPaid) return m.common_account_status_refunded();
   if (order.amountRefunded > 0) {
     return m.common_account_status_partly_refunded({ amount: money(order.amountRefunded, order.currency) });
   }
   return m.common_account_status_paid();
 }
 
-function resultStatus(job: PublicJob) {
-  if (job.status === 'queued' || job.status === 'submitted') return m.common_results_generating();
-  if (job.status === 'failed') return m.common_results_failed();
-  if (job.status === 'canceled') return m.common_results_canceled();
-  return null;
-}
+type PoseResult = {
+  id: string;
+  status: string;
+  createdAt: number;
+  resultUrl?: string;
+};
 
-/** My creations: the last 30 jobs (the /api/jobs limit). Running jobs keep polling and become links when done. */
+const POSE_PENDING = new Set(['accepted', 'preparing', 'quoted', 'submitting', 'submitted', 'result_pending']);
+const isPosePending = (status: string) => POSE_PENDING.has(status);
+
+/** Recent pose results for the signed-in user; running jobs keep polling and become links when done. */
 function MyResults() {
-  const { jobs } = useGeneration({ recaptchaSiteKey: null });
+  const jobs = usePoseResults();
   return (
     <div className="account-card">
       <h3>{m.common_results_title()}</h3>
-      {jobs.length > 0 ? (
+      {jobs && jobs.length > 0 ? (
         <ul className="orders">
           {jobs.map((job) => (
             <li key={job.id}>
               {date(job.createdAt)} ·{' '}
-              {job.outputs.length > 0
-                ? job.outputs.map((output, i) => (
-                    <span key={output.url}>
-                      {i > 0 && ' · '}
-                      <a href={output.url} target="_blank" rel="noopener">
-                        {m.common_results_open()}
-                      </a>
-                    </span>
-                  ))
-                : resultStatus(job)}
+              {job.status === 'succeeded' && job.resultUrl ? (
+                <a href={job.resultUrl} target="_blank" rel="noopener">
+                  {m.common_results_open()}
+                </a>
+              ) : job.status === 'failed' ? (
+                m.common_results_failed()
+              ) : job.status === 'canceled' ? (
+                m.common_results_canceled()
+              ) : isPosePending(job.status) ? (
+                m.common_results_generating()
+              ) : (
+                m.common_results_attention()
+              )}
             </li>
           ))}
         </ul>
@@ -98,6 +103,58 @@ function MyResults() {
       )}
     </div>
   );
+}
+
+function usePoseResults(): PoseResult[] | null {
+  const [jobs, setJobs] = useState<PoseResult[] | null>(null);
+  const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+
+  const upsert = useRef((job: PoseResult) => {
+    setJobs((list) =>
+      list ? [job, ...list.filter((item) => item.id !== job.id)].sort((a, b) => b.createdAt - a.createdAt) : list,
+    );
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    const watch = (id: string) => {
+      const tick = async () => {
+        if (cancelled) return;
+        try {
+          const response = await fetch(`/api/pose/jobs/${id}`, { cache: 'no-store' });
+          if (response.ok) {
+            const next = (await response.json()) as PoseResult;
+            upsert.current(next);
+            if (!isPosePending(next.status)) {
+              timers.current.delete(id);
+              return;
+            }
+          }
+        } catch {
+          // Keep polling through network blips.
+        }
+        timers.current.set(id, setTimeout(tick, 2500));
+      };
+      timers.current.set(id, setTimeout(tick, 2500));
+    };
+    void fetch('/api/pose/jobs', { cache: 'no-store' })
+      .then((response) => (response.ok ? response.json() : { jobs: [] }))
+      .then((value) => {
+        if (cancelled) return;
+        const data = value as { jobs: PoseResult[] };
+        setJobs(data.jobs);
+        for (const job of data.jobs) if (isPosePending(job.status)) watch(job.id);
+      })
+      .catch(() => undefined);
+    const pending = timers.current;
+    return () => {
+      cancelled = true;
+      for (const timer of pending.values()) clearTimeout(timer);
+      pending.clear();
+    };
+  }, []);
+
+  return jobs;
 }
 
 /** Account content; in the dialog, onLeave closes it before opening the pricing dialog. */

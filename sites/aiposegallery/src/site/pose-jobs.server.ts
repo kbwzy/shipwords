@@ -38,7 +38,7 @@ export async function createPoseJob(request:Request,deps:Dependencies):Promise<R
     const payer=deps.authUser?await deps.authUser(request):null;
     const paid=Boolean(payer&&deps.ledger);
     const admitted=paid
-      ? await admitPaidPoseRequest(deps.db,{ownerId:guestOwnerId,requestKey,inputDigest,nowMs,ipHash})
+      ? await admitPaidPoseRequest(deps.db,{ownerId:guestOwnerId,requestKey,inputDigest,nowMs,ipHash,userId:payer!.id})
       : await admitTrialPoseRequest(deps.db,{ownerId:guestOwnerId,requestKey,inputDigest,nowMs,ipHash});
     if(admitted.kind==='limit')return json({error:paid?'Daily generation limit reached. Please try again tomorrow.':'The daily trial limit has been reached.'},429);
     if(admitted.kind==='conflict')return json({error:'This request key was already used for different input.'},409);

@@ -10,6 +10,8 @@ async function memoryDb() {
   sqlite.exec(migration.replaceAll('--> statement-breakpoint', ''));
   const ipMigration = await readFile(new URL('../migrations/20261029162210_superb_wilson_fisk.sql', import.meta.url), 'utf8');
   sqlite.exec(ipMigration.replaceAll('--> statement-breakpoint', ''));
+  const userMigration = await readFile(new URL('../migrations/20261103100000_pose_user_id.sql', import.meta.url), 'utf8');
+  sqlite.exec(userMigration.replaceAll('--> statement-breakpoint', ''));
   return {
     sqlite,
     prepare(sql) { return { bind(...values) { return { async first() { return sqlite.prepare(sql).get(...values) ?? null; } }; } }; },
@@ -21,9 +23,11 @@ test('migration preserves pre-existing admissions and their site and visitor quo
   const sqlite = new DatabaseSync(':memory:');
   const original = await readFile(new URL('../migrations/20261029134216_spooky_raza.sql', import.meta.url), 'utf8');
   const migration = await readFile(new URL('../migrations/20261029162210_superb_wilson_fisk.sql', import.meta.url), 'utf8');
+  const userMigration = await readFile(new URL('../migrations/20261103100000_pose_user_id.sql', import.meta.url), 'utf8');
   sqlite.exec(original.replaceAll('--> statement-breakpoint', ''));
   sqlite.prepare('INSERT INTO pose_requests (id,owner_id,request_key,input_digest,day,status,created_at) VALUES (?,?,?,?,?,?,?)').run('old-id',base.ownerId,base.requestKey,base.inputDigest,'2026-10-29','accepted',base.nowMs);
   sqlite.exec(migration.replaceAll('--> statement-breakpoint', ''));
+  sqlite.exec(userMigration.replaceAll('--> statement-breakpoint', ''));
   const db={prepare(sql){return {bind(...values){return {async first(){return sqlite.prepare(sql).get(...values) ?? null;}};}};}};
   assert.deepEqual(await admitPoseRequest(db,base),{kind:'existing',id:'old-id',status:'accepted'});
   assert.deepEqual(await admitPoseRequest(db,{...base,requestKey:'request-00000002',dailyOwnerLimit:1}),{kind:'limit'});

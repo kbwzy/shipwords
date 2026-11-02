@@ -59,6 +59,7 @@
   "common_results_generating": "generating…",
   "common_results_failed": "failed, credits returned",
   "common_results_canceled": "canceled",
+  "common_results_attention": "needs attention",
   "common_results_open": "Open",
   "common_account_label": "Account",
   "common_account_title": "Account — {name}",

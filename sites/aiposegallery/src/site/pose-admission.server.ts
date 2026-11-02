@@ -53,18 +53,20 @@ export async function poseIpPrefixHash(ip:string|null, secret:string|undefined, 
 export async function admitPoseRequest(db: D1Database, input: {
   ownerId: string; requestKey: string; inputDigest: string; nowMs: number;
   dailySiteLimit: number; dailyOwnerLimit: number; dailyIpLimit: number; ipHash: string;
+  userId?: string | null;
 }): Promise<AdmissionResult> {
-  const { ownerId, requestKey, inputDigest, nowMs, dailySiteLimit, dailyOwnerLimit, dailyIpLimit, ipHash } = input;
+  const { ownerId, requestKey, inputDigest, nowMs, dailySiteLimit, dailyOwnerLimit, dailyIpLimit, ipHash, userId = null } = input;
+  if (userId !== null && !/^[A-Za-z0-9_-]{4,128}$/.test(userId)) throw new Error('Invalid pose admission user');
   if (!/^[A-Za-z0-9_:-]{1,160}$/.test(ownerId) || !/^[A-Za-z0-9_-]{8,128}$/.test(requestKey) || !/^[a-f0-9]{64}$/.test(inputDigest) || !/^[a-f0-9]{64}$/.test(ipHash) || !Number.isSafeInteger(nowMs) || nowMs < 0 || !Number.isFinite(new Date(nowMs).getTime()) || [dailySiteLimit,dailyOwnerLimit,dailyIpLimit].some(limit=>!Number.isSafeInteger(limit)||limit<0||limit>10000)) throw new Error('Invalid pose admission parameters');
   const day = new Date(nowMs).toISOString().slice(0, 10);
   const id = crypto.randomUUID();
-  const inserted = await db.prepare(`INSERT INTO pose_requests (id, owner_id, request_key, input_digest, day, status, created_at, ip_hash)
-    SELECT ?, ?, ?, ?, ?, 'accepted', ?, ?
+  const inserted = await db.prepare(`INSERT INTO pose_requests (id, owner_id, request_key, input_digest, day, status, created_at, ip_hash, user_id)
+    SELECT ?, ?, ?, ?, ?, 'accepted', ?, ?, ?
     WHERE (SELECT count(*) FROM pose_requests WHERE day = ?) < ?
       AND (SELECT count(*) FROM pose_requests WHERE owner_id = ? AND day = ?) < ?
       AND (SELECT count(*) FROM pose_requests WHERE ip_hash = ? AND day = ?) < ?
     ON CONFLICT(owner_id, request_key) DO NOTHING
-    RETURNING id, input_digest, status`).bind(id, ownerId, requestKey, inputDigest, day, nowMs, ipHash, day, dailySiteLimit, ownerId, day, dailyOwnerLimit, ipHash, day, dailyIpLimit).first<AdmissionRow>();
+    RETURNING id, input_digest, status`).bind(id, ownerId, requestKey, inputDigest, day, nowMs, ipHash, userId, day, dailySiteLimit, ownerId, day, dailyOwnerLimit, ipHash, day, dailyIpLimit).first<AdmissionRow>();
   if (inserted) return { kind: 'accepted', id: inserted.id, status: inserted.status };
   const existing = await db.prepare('SELECT id, input_digest, status FROM pose_requests WHERE owner_id = ? AND request_key = ?').bind(ownerId, requestKey).first<AdmissionRow>();
   if (!existing) return { kind: 'limit' };
@@ -76,6 +78,6 @@ export function admitTrialPoseRequest(db: D1Database, input: {ownerId:string;req
 }
 
 /** Paid requests bypass the trial budget; the generous caps are only a fail-safe backstop. */
-export function admitPaidPoseRequest(db: D1Database, input: {ownerId:string;requestKey:string;inputDigest:string;nowMs:number;ipHash:string}) {
-  return admitPoseRequest(db, {...input, dailySiteLimit:10000, dailyOwnerLimit:10000, dailyIpLimit:10000});
+export function admitPaidPoseRequest(db: D1Database, input: {ownerId:string;requestKey:string;inputDigest:string;nowMs:number;ipHash:string;userId?: string|null}) {
+  return admitPoseRequest(db, {...input, dailySiteLimit:10000, dailyOwnerLimit:10000, dailyIpLimit:10000, userId: input.userId ?? null});
 }
