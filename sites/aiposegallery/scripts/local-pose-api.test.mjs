@@ -9,6 +9,17 @@ const dir = await mkdtemp(join(tmpdir(), 'pose-api-test-'));
 after(() => rm(dir, { recursive: true, force: true }));
 const { createLocalPoseService } = await import('./local-pose-api.mjs').catch(() => ({}));
 
+/** Poll until the job reaches a terminal state; slow CI machines must not flake. */
+async function pollJob(send, id, timeoutMs = 3000) {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const job = JSON.parse((await send('GET', `/jobs/${id}`)).body.toString());
+    if (job.status === 'succeeded' || job.status === 'failed') return job;
+    if (Date.now() > deadline) throw new Error(`job ${id} did not finish in ${timeoutMs}ms (last status: ${job.status})`);
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
+}
+
 test('local service implementation exists', () => assert.equal(typeof createLocalPoseService, 'function'));
 
 test('origin, host, validation, budget, duplicates, and concurrent jobs', async () => {
@@ -83,8 +94,7 @@ test('origin, host, validation, budget, duplicates, and concurrent jobs', async 
   assert.deepEqual(sent[1].input.references.map(x => x.file_id), ['file-photo', 'file-pose']);
   assert.deepEqual(sent[1].parameters, { resolution:'1K', aspect_ratio:'3:4', quality:'medium', n:1 });
   release();
-  await new Promise(resolve => setTimeout(resolve, 30));
-  const job = json(await send('GET', `/jobs/${id}`));
+  const job = await pollJob(send, id);
   assert.equal(job.status, 'succeeded'); assert.equal(job.resultUrl, `/result/${id}`);
   assert.equal(json(await send('GET', '/jobs/recover', { headers: { 'idempotency-key': 'task-00000002' } })).resultUrl, job.resultUrl);
   const image = await send('GET', job.resultUrl); assert.deepEqual(image.body, png); assert.equal(image.headers['cache-control'], 'no-store');
