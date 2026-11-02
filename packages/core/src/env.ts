@@ -29,6 +29,12 @@ export interface CoreEnv {
   WAFFO_BILLING_ENABLED?: string;
   /** Store short ID (STO_...) used for the customer portal. */
   WAFFO_STORE_ID?: string;
+  /**
+   * Optional promotion code prefilled on Waffo checkout sessions. When set, the
+   * hosted cashier shows a (replaceable) code field. Used for zero-cost order
+   * verification; leave unset in normal operation.
+   */
+  WAFFO_TEST_PROMO_CODE?: string;
 
   /** reCAPTCHA (Google Cloud): the client uses the site key; the server calls createAssessment with the project ID and API key. */
   RECAPTCHA_SITE_KEY: string;

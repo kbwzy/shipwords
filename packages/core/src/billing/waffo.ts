@@ -13,6 +13,8 @@ export interface WaffoOptions {
   /** Sandbox checkouts and reconciliation are enabled only when explicitly allowed. */
   enabled?: boolean;
   fetcher?: typeof fetch;
+  /** Prefilled promotion code shown on the hosted cashier (checkout sessions only). */
+  promotionCode?: string;
 }
 
 const BLOCKED = 'Waffo billing disabled: payment and refund evidence is unverified';
@@ -192,6 +194,9 @@ export class WaffoProvider implements PaymentProvider {
       buyerIdentity: request.customerRef,
       successUrl: request.successUrl,
       orderMerchantExternalId: request.orderId,
+      ...(this.options.promotionCode
+        ? { promotionCode: this.options.promotionCode, allowPromotionCodes: true }
+        : {}),
     });
     // Our order id is the stable ref; the provider fetches by orderMerchantExternalId.
     return { url: result.checkoutUrl, checkoutRef: request.orderId };
