@@ -1,0 +1,6 @@
+{
+  "orderId": "pose-test-d31c7f6e-8bb4-4a84-9c4f-208aa1076f15",
+  "idempotencyKey": "pose-test-checkout-d31c7f6e-8bb4-4a84-9c4f-208aa1076f15",
+  "environment": "test",
+  "createdAt": "2026-10-29T14:08:14.764Z"
+}

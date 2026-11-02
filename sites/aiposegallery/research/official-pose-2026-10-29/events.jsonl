@@ -1,0 +1,6 @@
+{"at":"2026-10-29T13:54:18.495Z","phase":"quoted","currency":"USD","primary":"0.01224","expected":"0.0367"}
+{"at":"2026-10-29T13:54:18.500Z","phase":"submitting","max_cost":"0.30"}
+{"at":"2026-10-29T13:54:18.914Z","phase":"submitted"}
+{"at":"2026-10-29T13:54:41.390Z","phase":"terminal","status":"succeeded","billing_status":"settled"}
+{"at":"2026-10-29T13:54:41.397Z","phase":"settled","currency":"USD","amount":"0.024297"}
+{"at":"2026-10-29T13:54:43.101Z","phase":"downloaded","filename":"result.png","bytes":2152683,"sha256":"eb55bde2f1b35dbce524600408c5a25305b0f5f262dfe162825d0ef8ca043f02","result_host":"75397736ff6ffddf6c5d8208a05fa738.r2.cloudflarestorage.com"}

@@ -1,0 +1,7 @@
+{"at":"2026-10-29T11:43:20.407Z","phase":"keys_persisted"}
+{"at":"2026-10-29T11:43:43.906Z","phase":"quoted","amount":"0.0085","expected_amount":"0.0085","currency":"USD","expires_at":1793274283}
+{"at":"2026-10-29T11:43:43.912Z","phase":"submitting","max_cost":"0.30"}
+{"at":"2026-10-29T11:43:44.363Z","phase":"submitted","job_id":"2115771561825800192"}
+{"at":"2026-10-29T11:45:12.931Z","phase":"terminal","status":"succeeded","billing_status":"settled"}
+{"at":"2026-10-29T11:45:12.939Z","phase":"settled","amount":"0.0085","currency":"USD"}
+{"at":"2026-10-29T11:45:15.514Z","phase":"downloaded","filename":"result-walking.png","bytes":1742605,"sha256":"474ec31a5273f43bb744ebc7a6032ccce20d9ae537af0af26b2428034c26b3cb"}

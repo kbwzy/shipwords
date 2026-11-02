@@ -1,0 +1,20 @@
+{
+  "keys": {
+    "generation": "pose-official-8a3ad4ba-795b-493a-819f-df4d72e66dc5",
+    "photo": "pose-official-8a3ad4ba-795b-493a-819f-df4d72e66dc5-photo",
+    "pose": "pose-official-8a3ad4ba-795b-493a-819f-df4d72e66dc5-pose"
+  },
+  "source_sha256": [
+    "32d813ce1fe66851a4943152b006865217b7ebabee6960b119be9b6a204ff19a",
+    "0c90754c5245943599b9d0015124cc4c260233cecf3118505c1767d1704460aa"
+  ],
+  "model": "openai/gpt-image-2.5-sunburst",
+  "routing": {
+    "only": [
+      "official"
+    ],
+    "fallback": false,
+    "fidelity": "original"
+  },
+  "max_cost": "0.30"
+}

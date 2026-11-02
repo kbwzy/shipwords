@@ -1,0 +1,26 @@
+// Dedicated isolated staging resources. Production uses wrangler.jsonc.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "aiposegallery-staging",
+  "main": "src/server.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "d1_databases": [{
+    "binding": "DB",
+    "database_name": "aiposegallery-staging-db",
+    "database_id": "48ca0402-44ae-4ab2-85a8-4832bfc593b1",
+    "migrations_dir": "migrations"
+  }],
+  "r2_buckets": [{"binding": "POSE_MEDIA", "bucket_name": "aiposegallery-staging-media"}],
+  "workflows": [{"binding": "POSE_WORKFLOW", "name": "aiposegallery-staging-pose", "class_name": "PoseWorkflow"}],
+  "triggers": {"crons": ["*/10 * * * *"]},
+  "vars": {
+    "POSE_STAGING": "true",
+    "POSE_TRIAL_ENABLED": "true",
+    "POSE_ALLOWED_ORIGIN": "https://aiposegallery-staging.penghuolin1990.workers.dev",
+    "POSE_UPLOAD_HOSTS": "75397736ff6ffddf6c5d8208a05fa738.r2.cloudflarestorage.com",
+    "POSE_RESULT_HOSTS": "75397736ff6ffddf6c5d8208a05fa738.r2.cloudflarestorage.com"
+  },
+  "observability": {"enabled": true},
+  "upload_source_maps": true
+}

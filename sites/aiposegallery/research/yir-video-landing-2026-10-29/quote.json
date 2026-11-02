@@ -1,0 +1,41 @@
+{
+  "parameter_notices": [
+    {
+      "name": "max_cost",
+      "disposition": "ignored",
+      "reason": "not_used_by_quote",
+      "message": "Quotes do not use max_cost; send it with the generation request."
+    }
+  ],
+  "supply": {
+    "available": true,
+    "issues": []
+  },
+  "primary": {
+    "amount": "0.256",
+    "kind": "fixed"
+  },
+  "official": {
+    "amount": "0.320",
+    "kind": "fixed"
+  },
+  "price_difference_percent": {
+    "min": -20,
+    "max": -20,
+    "reference_amount_micros": 320000
+  },
+  "object": "quote",
+  "model": "google/veo-3.1-fast-generate-001",
+  "operation": "generate_video",
+  "input_mode": "text",
+  "parameters": {
+    "duration": 4,
+    "resolution": "720p",
+    "aspect_ratio": "16:9",
+    "generate_audio": false,
+    "n": 1
+  },
+  "currency": "USD",
+  "expected_amount": "0.256",
+  "expires_at": 1793257793
+}

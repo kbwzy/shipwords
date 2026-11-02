@@ -1,0 +1,8 @@
+{
+  "idempotencyKey": "pose-sandbox-f973d2eb-b5ea-4f31-aedc-a58f0bd3a282",
+  "name": "TEST ONLY - Pose checkout",
+  "currency": "USD",
+  "amount": "1.00",
+  "environment": "test",
+  "createdAt": "2026-10-29T14:05:07.695Z"
+}

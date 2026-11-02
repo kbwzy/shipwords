@@ -1,0 +1,141 @@
+{
+  "persons": {
+    "p01": {
+      "sheet": "fashion-reference-sheet.png",
+      "box": [
+        0,
+        0,
+        509,
+        702
+      ]
+    },
+    "p02": {
+      "sheet": "fashion-reference-sheet.png",
+      "box": [
+        516,
+        0,
+        1024,
+        702
+      ]
+    },
+    "p03": {
+      "sheet": "fashion-reference-sheet.png",
+      "box": [
+        0,
+        709,
+        509,
+        1536
+      ]
+    },
+    "p04": {
+      "sheet": "fashion-extra.png",
+      "box": [
+        0,
+        0,
+        412,
+        394
+      ]
+    },
+    "p05": {
+      "sheet": "fashion-extra.png",
+      "box": [
+        420,
+        0,
+        819,
+        394
+      ]
+    },
+    "p06": {
+      "sheet": "fashion-extra.png",
+      "box": [
+        827,
+        0,
+        1254,
+        394
+      ]
+    },
+    "p07": {
+      "sheet": "fashion-extra.png",
+      "box": [
+        420,
+        400,
+        819,
+        792
+      ]
+    },
+    "p08": {
+      "sheet": "fashion-extra.png",
+      "box": [
+        827,
+        400,
+        1254,
+        792
+      ]
+    },
+    "p09": {
+      "sheet": "expressive-extra.png",
+      "box": [
+        420,
+        0,
+        819,
+        406
+      ]
+    },
+    "p10": {
+      "sheet": "expressive-extra.png",
+      "box": [
+        420,
+        412,
+        819,
+        819
+      ]
+    }
+  },
+  "poses": {
+    "standing": {
+      "sheet": "pose-reference-sheet.png",
+      "box": [
+        0,
+        0,
+        418,
+        418
+      ]
+    },
+    "seated": {
+      "sheet": "seated-extra.png",
+      "box": [
+        0,
+        0,
+        412,
+        412
+      ]
+    },
+    "turn": {
+      "sheet": "fashion-extra.png",
+      "box": [
+        0,
+        400,
+        412,
+        792
+      ]
+    },
+    "walking": {
+      "sheet": "movement-extra.png",
+      "box": [
+        0,
+        396,
+        412,
+        792
+      ]
+    },
+    "upper": {
+      "sheet": "upper-extra.png",
+      "box": [
+        420,
+        0,
+        819,
+        411
+      ]
+    }
+  }
+}

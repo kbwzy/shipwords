@@ -1,0 +1,7 @@
+/* Motion sample: a cream paper frame flipped against the dark stage (DESIGN.md). */
+.motion-preview { width: 100%; max-width: 570px; justify-self: end; margin: 0; padding: 9px; background: var(--paper); border: 1px solid rgba(242, 234, 217, .14); box-shadow: 0 14px 35px rgba(6, 4, 2, .45); border-radius: 3px; }
+.motion-preview video { display: block; width: 100%; aspect-ratio: 16 / 9; background: var(--paper-deep); object-fit: contain; }
+.motion-preview figcaption { display: flex; justify-content: space-between; align-items: start; gap: 18px; padding: 12px 5px 5px; }
+.motion-preview figcaption strong { color: var(--amber-deep); font-size: 10px; letter-spacing: .1em; white-space: nowrap; font-family: var(--mono); }
+.motion-preview figcaption span { max-width: 285px; color: var(--muted-paper); font-size: 11px; line-height: 1.45; }
+@media (max-width: 760px) { .motion-preview { justify-self: center; } .motion-preview figcaption { flex-direction: column; gap: 6px; } }

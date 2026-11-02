@@ -1,0 +1,271 @@
+import { env } from 'cloudflare:test';
+import { describe, expect, it } from 'vitest';
+import { admitPoseRequest } from '../src/site/pose-admission.server';
+import { getPrivateImage, putPrivateImage } from '../src/site/private-media.server';
+import { poseInputDigest, storePoseTaskInput } from '../src/site/pose-task-input.server';
+import { advancePoseWorkflow, attachVerifiedPoseJob, createPoseWorkflowDependencies, recoverPoseWorkflow, runPoseWorkflow } from '../src/site/pose-workflow.server';
+
+const png = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='), c => c.charCodeAt(0));
+const json = (value: unknown) => new Response(JSON.stringify(value), { headers: { 'content-type': 'application/json' } });
+
+async function fixture(options: { submitLost?: boolean; resultFails?: boolean; status?: string; amount?: string; withPhoto?: boolean; resultHost?: string; uploadHost?: string; promptAction?: 'allow' | 'block' | 'review'; prompt?: string } = {}) {
+  const owner = `guest_${crypto.randomUUID().replaceAll('-', '').padEnd(64, '0')}`;
+  const input = { prompt: options.prompt ?? 'sit', pose: { bytes: png, mediaType: 'image/png' }, ...(options.withPhoto ? { photo: { bytes: png, mediaType: 'image/png' } } : {}) };
+  const digest = await poseInputDigest(input);
+  const admitted = await admitPoseRequest(env.DB, { ownerId: owner, requestKey: `request_${crypto.randomUUID()}`, inputDigest: digest, nowMs: Date.now(), ipHash:'1'.repeat(64), dailyIpLimit:10000, dailySiteLimit: 1000, dailyOwnerLimit: 1000 });
+  if (admitted.kind !== 'accepted') throw new Error('Test admission failed');
+  const id = admitted.id;
+  const bucket = env.TEST_MEDIA as R2Bucket;
+  await storePoseTaskInput(bucket, id, owner, input);
+  const files = new Map<string, Record<string, unknown>>();
+  const counts = { submit: 0, quote: 0, download: 0, uploads: 0 };
+  const submitted: { body?: any; key?: string } = {};
+  let status = options.status ?? 'succeeded';
+  let resultFails = options.resultFails ?? false;
+  let resultExpired = false;
+  let providerUnavailable = false;
+  const fetcher: typeof fetch = async (target, init = {}) => {
+    const url = new URL(typeof target === 'string' ? target : target instanceof URL ? target.href : target.url);
+    if (url.hostname === 'upload.example.test') { counts.uploads++; return new Response(null, { status: 200 }); }
+    if (url.hostname === 'cdn.example.test') {
+      counts.download++;
+      if (resultFails) return new Response(null, { status: 503 });
+      expect(new Headers(init.headers).has('authorization')).toBe(false);
+      return new Response(png, { headers: { 'content-type': 'image/png' } });
+    }
+    if (url.hostname !== 'gateway.yir.ai') throw new Error('Unexpected host');
+    if (url.pathname === '/v1/files') {
+      const meta = JSON.parse(init.body as string).files[0];
+      const fileId = `file_${crypto.randomUUID()}`;
+      const file = { ...meta, id: fileId, object: 'file', status: 'pending_upload', upload: { type: 'multipart', expires_at: Math.floor(Date.now()/1000)+60, parts: [{ part_number: 1, size: meta.size, url: `https://${options.uploadHost ?? 'upload.example.test'}/object` }] } };
+      files.set(fileId, file);
+      return json({ files: [file] });
+    }
+    if (url.pathname.endsWith('/complete')) return json({ ...files.get(url.pathname.split('/')[3]!), status: 'ready' });
+    if (url.pathname === '/v1/images/quotes') {
+      counts.quote++;
+      const request = JSON.parse(init.body as string);
+      return json({ object:'quote', currency:'USD', model:request.model, operation:'generate_image', input_mode:'image', parameters:request.parameters, expires_at:Math.floor(Date.now()/1000)+60, supply:{ available:true, issues:[] }, primary:{kind:'fixed',amount:options.amount ?? '0.05'}, official:{kind:'fixed',amount:'0.05'}, expected_amount:options.amount ?? '0.05' });
+    }
+    if (url.pathname === '/v1/images/generations') {
+      counts.submit++;
+      submitted.key = new Headers(init.headers).get('idempotency-key') ?? undefined;
+      submitted.body = JSON.parse(init.body as string);
+      if (options.submitLost) throw new Error('simulated lost response');
+      return json({ id:'job_123', status:'queued' });
+    }
+    if (url.pathname === '/v1/jobs/job_123') {
+      if (providerUnavailable) throw new Error('provider offline');
+      return json({ id:'job_123', object:'job', status, model:'model', error:null, created_at:1, ...(status === 'succeeded' ? { result:resultExpired ? {availability:'expired'} : {availability:'available',files:[{url:`https://${options.resultHost ?? 'cdn.example.test'}/image`,media_type:'image/png',expires_at:9999999999}]} } : {}) });
+    }
+    throw new Error(`Unexpected path: ${url.pathname}`);
+  };
+  const deps = createPoseWorkflowDependencies({ DB:env.DB, POSE_MEDIA:bucket, YIR_API_KEY:'fake-test-only', POSE_RESULT_HOSTS:'cdn.example.test', POSE_UPLOAD_HOSTS:'upload.example.test' }, fetcher, { scanPrompt: async () => ({ action: options.promptAction ?? 'allow' }) });
+  const row = async () => env.DB.prepare('SELECT status, upstream_job_id, output_key, error_code FROM pose_requests WHERE id = ?').bind(id).first<{status:string;upstream_job_id:string|null;output_key:string|null;error_code:string|null}>();
+  return { id, owner, digest, input, bucket, deps, files, counts, submitted, row, setStatus: (s:string) => {status = s;}, setResultFails:(v:boolean) => {resultFails = v;}, setResultExpired:(v:boolean) => {resultExpired = v;}, setProviderUnavailable:(v:boolean) => {providerUnavailable = v;} };
+}
+
+describe('private pose workflow', () => {
+  it('blocks a multi-person instruction before uploading references', async () => {
+    const f = await fixture({ prompt: 'Two fully clothed adults standing together' });
+    expect(await advancePoseWorkflow(f.deps, f.id)).toBe('failed');
+    expect(f.counts.uploads).toBe(0);
+    expect(f.counts.quote).toBe(0);
+    expect(f.counts.submit).toBe(0);
+    expect((await f.row())?.error_code).toBe('multi_person_prompt_blocked');
+  });
+
+  it('blocks a prompt before uploading references when Waffo rejects it', async () => {
+    const f = await fixture({ promptAction:'block', withPhoto:true });
+    expect(await advancePoseWorkflow(f.deps, f.id)).toBe('failed');
+    expect(f.counts.uploads).toBe(0);
+    expect(f.counts.quote).toBe(0);
+    expect(f.counts.submit).toBe(0);
+    expect((await f.row())?.error_code).toBe('prompt_blocked');
+  });
+
+  it('claims a single submit concurrently, quotes ordered references and stores an owner-only result', async () => {
+    const f = await fixture({ withPhoto:true });
+    await Promise.all(Array.from({length:5}, () => advancePoseWorkflow(f.deps, f.id)));
+    await advancePoseWorkflow(f.deps, f.id);
+    expect(f.counts.submit).toBe(1);
+    expect(f.submitted.key).toBe(`pose-${f.id}`);
+    expect(f.submitted.body.input.references).toHaveLength(2);
+    expect(f.submitted.body.input.references.map((ref: {file_id:string}) => f.files.get(ref.file_id)?.name)).toEqual(['photo.png', 'pose.png']);
+    expect(f.submitted.body.max_cost).toBe('0.30');
+    const row = await f.row();
+    expect(row?.status).toBe('succeeded');
+    expect(row?.output_key).toMatch(/^pose-media\/[0-9a-f-]{36}$/);
+    expect((await getPrivateImage(f.bucket, f.owner, row!.output_key!)).status).toBe(200);
+    expect((await getPrivateImage(f.bucket, `guest_${'f'.repeat(64)}`, row!.output_key!)).status).toBe(404);
+    const quote = await f.bucket.get(`pose-tasks/${f.id}/quoted-request.json`);
+    expect(quote?.customMetadata?.ownerId).toBe(f.owner);
+  });
+
+  it('does not resubmit a lost response or an interrupted submitting state', async () => {
+    const f = await fixture({submitLost:true});
+    expect(await advancePoseWorkflow(f.deps, f.id)).toBe('unknown');
+    expect(await advancePoseWorkflow(f.deps, f.id)).toBe('unknown');
+    expect(f.counts.submit).toBe(1);
+    const other = await fixture();
+    await env.DB.prepare("UPDATE pose_requests SET status='submitting' WHERE id=?").bind(other.id).run();
+    expect(await advancePoseWorkflow(other.deps, other.id)).toBe('submitting');
+    expect(other.counts.submit).toBe(0);
+  });
+
+  it('does not resubmit if persisting the returned provider ID fails', async () => {
+    const f = await fixture();
+    const db = {
+      prepare(sql: string) {
+        const statement = env.DB.prepare(sql);
+        return {
+          bind(...args: unknown[]) {
+            if (sql.startsWith('UPDATE pose_requests') && args[0] === 'submitted') return { first: async () => { throw new Error('simulated D1 write failure'); } };
+            return statement.bind(...args);
+          },
+        };
+      },
+    } as unknown as D1Database;
+    expect(await advancePoseWorkflow({...f.deps, db}, f.id)).toBe('unknown');
+    expect(await advancePoseWorkflow(f.deps, f.id)).toBe('unknown');
+    expect(f.counts.submit).toBe(1);
+  });
+
+  it('recovers a known job after a transfer failure without submitting again', async () => {
+    const f = await fixture({resultFails:true});
+    await expect(advancePoseWorkflow(f.deps, f.id)).rejects.toThrow('Invalid result response');
+    expect((await f.row())?.status).toBe('result_pending');
+    f.setResultFails(false);
+    expect(await advancePoseWorkflow(f.deps, f.id)).toBe('succeeded');
+    expect(f.counts.submit).toBe(1);
+    expect(f.counts.download).toBe(2);
+  });
+
+  it('finishes an already stored result while the provider is offline', async () => {
+    const f = await fixture({resultFails:true});
+    await expect(advancePoseWorkflow(f.deps, f.id)).rejects.toThrow();
+    const key = await putPrivateImage(f.bucket, f.owner, 'result', png, 'image/png');
+    await f.bucket.put(`pose-tasks/${f.id}/result.json`, JSON.stringify({outputKey:key}), { customMetadata:{ownerId:f.owner,inputDigest:f.digest} });
+    f.setProviderUnavailable(true);
+    expect(await advancePoseWorkflow(f.deps, f.id)).toBe('succeeded');
+    expect(f.counts.submit).toBe(1);
+  });
+
+  it('rejects untrusted result hosts without fetching or exposing them', async () => {
+    const f = await fixture({resultHost:'evil.example.test'});
+    await expect(advancePoseWorkflow(f.deps, f.id)).rejects.toThrow('Invalid result URL');
+    expect((await f.row())?.status).toBe('result_pending');
+    expect(f.counts.download).toBe(0);
+    expect(f.counts.submit).toBe(1);
+  });
+
+  it('rejects untrusted upload hosts before sending private input', async () => {
+    const f = await fixture({uploadHost:'evil.example.test'});
+    await expect(advancePoseWorkflow(f.deps, f.id)).rejects.toThrow();
+    expect(f.counts.uploads).toBe(0);
+    expect(f.counts.submit).toBe(0);
+  });
+
+  it('fails only on confirmed upstream failure; an over-budget quote never submits', async () => {
+    const f = await fixture({status:'failed'});
+    expect(await advancePoseWorkflow(f.deps, f.id)).toBe('failed');
+    expect(f.counts.submit).toBe(1);
+    const expensive = await fixture({amount:'0.16'});
+    expect(await advancePoseWorkflow(expensive.deps, expensive.id)).toBe('failed');
+    expect((await expensive.row())?.error_code).toBe('quote_unavailable_or_over_budget');
+    expect(expensive.counts.submit).toBe(0);
+  });
+
+  it('polls only the known job, and leaves a long-running job resumable after the bound', async () => {
+    const f = await fixture({status:'running'});
+    const calls: string[] = [];
+    const step = { do: async <T extends string>(name:string, fn:()=>Promise<T>) => { calls.push(name); return fn(); }, sleep: async () => {} };
+    expect(await runPoseWorkflow(f.deps, f.id, step)).toBe('submitted');
+    expect((await f.row())?.error_code).toBe('workflow_poll_exhausted');
+    expect(calls).toHaveLength(60);
+    expect(f.counts.submit).toBe(1);
+    f.setStatus('succeeded');
+    expect(await advancePoseWorkflow(f.deps, f.id)).toBe('succeeded');
+    expect(f.counts.submit).toBe(1);
+  });
+
+  it('reports an unknown outcome and attaches only an independently verified job without replay', async () => {
+    const f = await fixture({submitLost:true});
+    expect(await advancePoseWorkflow(f.deps, f.id)).toBe('unknown');
+    expect(await recoverPoseWorkflow(f.deps, f.id)).toEqual({status:'unknown',action:'reconcile',reason:'submission_unknown'});
+    expect(await attachVerifiedPoseJob(f.deps, f.id, 'job_123')).toEqual({status:'succeeded',action:'done',reason:'completed'});
+    expect(f.counts.submit).toBe(1);
+    await expect(attachVerifiedPoseJob(f.deps, f.id, 'job_123')).rejects.toThrow();
+  });
+
+  it('does not disturb an in-flight submission and preserves its returned ID', async () => {
+    const f = await fixture();
+    let release!: () => void;
+    let started!: () => void;
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    const entered = new Promise<void>(resolve => { started = resolve; });
+    const client = { ...f.deps.client, submitImage: async (...args: Parameters<typeof f.deps.client.submitImage>) => {
+      started();
+      await gate;
+      return f.deps.client.submitImage(...args);
+    } };
+    const active = advancePoseWorkflow({...f.deps, client}, f.id);
+    await entered;
+    expect(await recoverPoseWorkflow(f.deps, f.id)).toEqual({status:'submitting',action:'reconcile',reason:'submission_unknown'});
+    release();
+    expect(await active).toBe('succeeded');
+    expect((await f.row())?.upstream_job_id).toBe('job_123');
+    expect(f.counts.submit).toBe(1);
+  });
+
+  it('never submits or advances preparation during recovery', async () => {
+    const f = await fixture();
+    expect(await recoverPoseWorkflow(f.deps, f.id)).toEqual({status:'accepted',action:'review',reason:'preparation'});
+    await env.DB.prepare("UPDATE pose_requests SET status='quoted' WHERE id=?").bind(f.id).run();
+    expect(await recoverPoseWorkflow(f.deps, f.id)).toEqual({status:'quoted',action:'review',reason:'preparation'});
+    expect(f.counts.submit).toBe(0);
+  });
+
+  it('never submits even when a valid saved quote exists', async () => {
+    const f = await fixture();
+    const db = { prepare(sql: string) {
+      const statement = env.DB.prepare(sql);
+      return { bind(...args: unknown[]) {
+        if (sql.startsWith('UPDATE pose_requests') && args[0] === 'submitting') return { first: async () => { throw new Error('interrupted before submit'); } };
+        return statement.bind(...args);
+      } };
+    } } as unknown as D1Database;
+    await expect(advancePoseWorkflow({...f.deps, db}, f.id)).rejects.toThrow('interrupted before submit');
+    expect((await f.row())?.status).toBe('quoted');
+    expect(await f.bucket.get(`pose-tasks/${f.id}/quoted-request.json`)).not.toBeNull();
+    expect(await recoverPoseWorkflow(f.deps, f.id)).toEqual({status:'quoted',action:'review',reason:'preparation'});
+    expect(f.counts.submit).toBe(0);
+  });
+
+  it('records Workflow retry exhaustion without automatically submitting', async () => {
+    const f = await fixture();
+    const exhausted = {do: async <T extends string>(_name:string, _fn:()=>Promise<T>):Promise<T> => {throw Error('network secret');}, sleep: async () => {}};
+    expect(await runPoseWorkflow(f.deps, f.id, exhausted)).toBe('accepted');
+    expect((await f.row())?.error_code).toBe('workflow_retry_exhausted');
+    expect(await recoverPoseWorkflow(f.deps, f.id)).toEqual({status:'accepted',action:'review',reason:'preparation'});
+    expect(f.counts.submit).toBe(0);
+  });
+
+  it('keeps poll and transfer errors resumable and reports result expiry for review', async () => {
+    const f = await fixture({status:'running'});
+    expect(await advancePoseWorkflow(f.deps, f.id)).toBe('submitted');
+    f.setProviderUnavailable(true);
+    expect(await recoverPoseWorkflow(f.deps, f.id)).toEqual({status:'submitted',action:'retry',reason:'poll'});
+    f.setProviderUnavailable(false);
+    f.setStatus('succeeded');
+    f.setResultFails(true);
+    expect(await recoverPoseWorkflow(f.deps, f.id)).toEqual({status:'result_pending',action:'retry',reason:'transfer'});
+    f.setResultExpired(true);
+    expect(await recoverPoseWorkflow(f.deps, f.id)).toEqual({status:'result_pending',action:'review',reason:'result_expired'});
+    expect((await f.row())?.error_code).toBe('result_expired');
+    expect(f.counts.submit).toBe(1);
+    const key = await putPrivateImage(f.bucket, f.owner, 'result', png, 'image/png');
+    await f.bucket.put(`pose-tasks/${f.id}/result.json`, JSON.stringify({outputKey:key}), { customMetadata:{ownerId:f.owner,inputDigest:f.digest} });
+    expect(await recoverPoseWorkflow(f.deps, f.id)).toEqual({status:'succeeded',action:'done',reason:'completed'});
+  });
+});

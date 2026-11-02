@@ -1,0 +1,18 @@
+{
+  "keys": {
+    "generation": "pose-benchmark-ae8c06d2-70f9-443d-abf6-5a3fe4f13254",
+    "person_upload": "pose-benchmark-ae8c06d2-70f9-443d-abf6-5a3fe4f13254-person",
+    "pose_upload": "pose-benchmark-ae8c06d2-70f9-443d-abf6-5a3fe4f13254-pose"
+  },
+  "person_sha256": "32d813ce1fe66851a4943152b006865217b7ebabee6960b119be9b6a204ff19a",
+  "pose_sha256": "0c90754c5245943599b9d0015124cc4c260233cecf3118505c1767d1704460aa",
+  "model": "openai/gpt-image-2.5-sunburst",
+  "parameters": {
+    "resolution": "1K",
+    "aspect_ratio": "3:4",
+    "quality": "medium",
+    "n": 1
+  },
+  "prompt": "The first reference is the person: preserve her facial features, dark wavy hair, skin tone, sage green long-sleeved top, terracotta trousers and beige heels where visible. The second reference supplies only the pose and framing; do not copy its person or clothing. Photographic realism, warm neutral studio background, no text or watermark. Match the second reference: sit upright facing forward on a simple chair, hands resting on knees, feet on the floor. Show the full body and feet.",
+  "max_cost": "0.30"
+}

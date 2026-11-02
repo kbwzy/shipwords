@@ -1,0 +1,18 @@
+{
+  "request": {
+    "model": "google/veo-3.1-fast-generate-001",
+    "input": {
+      "type": "text",
+      "prompt": "A quiet editorial full-body pose study for an art reference website. One adult model in simple modest sage workout clothing, barefoot, in a minimal warm beige studio with soft diffused daylight. Locked-off wide camera, eye level, head-to-toe full figure occupying at most half the image height, centered in a large uncluttered space. Both feet, toes, hands and head remain entirely visible with generous empty floor below the feet and space above the head in every frame. The model smoothly shifts weight and slowly transitions from a relaxed neutral standing pose into a gentle open standing pose, without walking, jumping, kneeling, raising feet or moving toward the camera. Natural anatomy, natural balance and subtle continuous motion. Static camera, no zoom, no crop, no cut, no other people, no text, no logos."
+    },
+    "parameters": {
+      "duration": 4,
+      "resolution": "720p",
+      "aspect_ratio": "16:9",
+      "generate_audio": false
+    },
+    "max_cost": "0.60"
+  },
+  "idempotencyKey": "a7f19f94-25bd-43b2-a4bc-08c3bbb30376",
+  "submitted_at": "2026-10-29T07:09:09.639Z"
+}
