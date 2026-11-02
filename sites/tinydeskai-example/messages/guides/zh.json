@@ -257,5 +257,7 @@
   "guides_dogs_faq4_a": "每个位置用各自的照片独立替换，所以混编乐队可行。但这个组合没有全狗、全人乐队那样经过同样的实测，第一次效果不对属正常，换个位置重渲一次即可。",
   "guides_dogs_faq5_q": "狗狗版视频带歌吗？",
   "guides_dogs_faq5_a": "带。{site} 会把原曲混回去，同时也会给你一个无声版方便自己剪。",
-  "guides_dogs_cta_howto_link": "四步教程"
+  "guides_dogs_cta_howto_link": "四步教程",
+  "guides_howto_pets": "宠物也行：一张狗照就能完整替换表演者，爪子也一并换好。",
+  "guides_howto_pets_link": "看狗狗版指南"
 }

@@ -257,5 +257,7 @@
   "guides_dogs_faq4_a": "Each seat is replaced from its own photo, so a mixed band is possible. That combination has not had the same tested runs as all-dog or all-human bands, so expect to re-render if the first attempt looks off.",
   "guides_dogs_faq5_q": "Does the dog video keep the song?",
   "guides_dogs_faq5_a": "Yes. {site} mixes the original song back in, and you also get a silent version for editing.",
-  "guides_dogs_cta_howto_link": "this 4-step guide"
+  "guides_dogs_cta_howto_link": "this 4-step guide",
+  "guides_howto_pets": "Pets work too: a dog photo replaces a performer completely, paws included.",
+  "guides_howto_pets_link": "See the dog version guide"
 }

@@ -334,6 +334,8 @@ function HomePage() {
         </ol>
         <p className="steps-more">
           <Link to="/how-to-make-outstanding-tiny-desk-ai-video">{m.home_how_guide_link()}</Link>
+          <br />
+          <Link to="/tiny-desk-ai-dogs">{m.home_how_dogs_link()}</Link>
         </p>
       </section>
 

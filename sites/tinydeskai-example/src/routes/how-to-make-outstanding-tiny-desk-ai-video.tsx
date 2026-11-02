@@ -1,5 +1,5 @@
 import { pageHead } from '@shipwords/core/seo';
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, Link } from '@tanstack/react-router';
 import { m } from '~/paraglide/messages.js';
 import { Faq, type FaqItem, faqJsonLd, GuidePage } from '~/site/guide';
 import { formatPrice } from '~/site/pricing';
@@ -88,6 +88,10 @@ function HowToPage() {
         <li>{m.guides_howto_photo_no_cover()}</li>
         <li>{m.guides_howto_photo_no_filter()}</li>
         <li>{m.guides_howto_photo_plain()}</li>
+        <li>
+          {m.guides_howto_pets()}{' '}
+          <Link to="/tiny-desk-ai-dogs">{m.guides_howto_pets_link()}</Link>
+        </li>
       </ul>
 
       <h2>{m.guides_howto_expect_heading()}</h2>
