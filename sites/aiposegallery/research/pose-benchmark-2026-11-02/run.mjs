@@ -3,7 +3,7 @@ import { randomUUID, createHash } from 'node:crypto';
 import { parseEnv } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
-import { createYirClient, createAndUploadFile } from '../../../../../packages/jobs/node_modules/@yir-ai/sdk/dist/server/index.js';
+import { createYirClient, createAndUploadFile } from '../../../../packages/jobs/node_modules/@yir-ai/sdk/dist/server/index.js';
 
 // 50-pair pose quality benchmark. One-shot: RUN-ONCE.json blocks any rerun from this
 // directory. Resume after an interruption skips pairs that already have a result file;

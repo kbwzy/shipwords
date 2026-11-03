@@ -1,0 +1,355 @@
+run: balance_checked
+p01-standing: keys_persisted
+p01-standing: quoted $0.0085
+p01-standing: submitting
+p01-standing: submitted
+p01-standing: terminal (succeeded)
+p01-standing: settled $0.0085
+p01-standing: downloaded
+p01-seated: keys_persisted
+p01-seated: quoted $0.0085
+p01-seated: submitting
+p01-seated: submitted
+p01-seated: terminal (succeeded)
+p01-seated: settled $0.0085
+p01-seated: downloaded
+p01-turn: keys_persisted
+p01-turn: quoted $0.0085
+p01-turn: submitting
+p01-turn: submitted
+p01-turn: terminal (succeeded)
+p01-turn: settled $0.0085
+p01-turn: downloaded
+p01-walking: keys_persisted
+p01-walking: quoted $0.0085
+p01-walking: submitting
+p01-walking: submitted
+p01-walking: terminal (succeeded)
+p01-walking: settled $0.0085
+p01-walking: downloaded
+p01-upper: keys_persisted
+p01-upper: quoted $0.0085
+p01-upper: submitting
+p01-upper: submitted
+p01-upper: terminal (succeeded)
+p01-upper: settled $0.0085
+p01-upper: downloaded
+p02-standing: keys_persisted
+p02-standing: quoted $0.0085
+p02-standing: submitting
+p02-standing: submitted
+p02-standing: terminal (succeeded)
+p02-standing: settled $0.0085
+p02-standing: downloaded
+p02-seated: keys_persisted
+p02-seated: quoted $0.0085
+p02-seated: submitting
+p02-seated: submitted
+p02-seated: terminal (succeeded)
+p02-seated: settled $0.0085
+p02-seated: downloaded
+p02-turn: keys_persisted
+p02-turn: quoted $0.0085
+p02-turn: submitting
+p02-turn: submitted
+p02-turn: terminal (succeeded)
+p02-turn: settled $0.0085
+p02-turn: downloaded
+p02-walking: keys_persisted
+p02-walking: quoted $0.0085
+p02-walking: submitting
+p02-walking: submitted
+p02-walking: terminal (succeeded)
+p02-walking: settled $0.0085
+p02-walking: downloaded
+p02-upper: keys_persisted
+p02-upper: quoted $0.0085
+p02-upper: submitting
+p02-upper: submitted
+p02-upper: terminal (succeeded)
+p02-upper: settled $0.0085
+p02-upper: downloaded
+p03-standing: keys_persisted
+p03-standing: quoted $0.0085
+p03-standing: submitting
+p03-standing: submitted
+p03-standing: terminal (succeeded)
+p03-standing: settled $0.0085
+p03-standing: downloaded
+p03-seated: keys_persisted
+p03-seated: quoted $0.0085
+p03-seated: submitting
+p03-seated: submitted
+p03-seated: terminal (succeeded)
+p03-seated: settled $0.0085
+p03-seated: downloaded
+p03-turn: keys_persisted
+p03-turn: quoted $0.0085
+p03-turn: submitting
+p03-turn: submitted
+p03-turn: terminal (succeeded)
+p03-turn: settled $0.0085
+p03-turn: downloaded
+p03-walking: keys_persisted
+p03-walking: quoted $0.0085
+p03-walking: submitting
+p03-walking: submitted
+p03-walking: terminal (succeeded)
+p03-walking: settled $0.0085
+p03-walking: downloaded
+p03-upper: keys_persisted
+p03-upper: quoted $0.0085
+p03-upper: submitting
+p03-upper: submitted
+p03-upper: terminal (succeeded)
+p03-upper: settled $0.0085
+p03-upper: downloaded
+p04-standing: keys_persisted
+p04-standing: quoted $0.0085
+p04-standing: submitting
+p04-standing: submitted
+p04-standing: terminal (succeeded)
+p04-standing: settled $0.0085
+p04-standing: downloaded
+p04-seated: keys_persisted
+p04-seated: quoted $0.0085
+p04-seated: submitting
+p04-seated: submitted
+p04-seated: terminal (succeeded)
+p04-seated: settled $0.0085
+p04-seated: downloaded
+p04-turn: keys_persisted
+p04-turn: quoted $0.0085
+p04-turn: submitting
+p04-turn: submitted
+p04-turn: terminal (succeeded)
+p04-turn: settled $0.0085
+p04-turn: downloaded
+p04-walking: keys_persisted
+p04-walking: quoted $0.0085
+p04-walking: submitting
+p04-walking: submitted
+p04-walking: terminal (succeeded)
+p04-walking: settled $0.0085
+p04-walking: downloaded
+p04-upper: keys_persisted
+p04-upper: quoted $0.0085
+p04-upper: submitting
+p04-upper: submitted
+p04-upper: terminal (succeeded)
+p04-upper: settled $0.0085
+p04-upper: downloaded
+p05-standing: keys_persisted
+p05-standing: quoted $0.0085
+p05-standing: submitting
+p05-standing: submitted
+p05-standing: terminal (succeeded)
+p05-standing: settled $0.0085
+p05-standing: downloaded
+p05-seated: keys_persisted
+p05-seated: quoted $0.0085
+p05-seated: submitting
+p05-seated: submitted
+p05-seated: terminal (succeeded)
+p05-seated: settled $0.0085
+p05-seated: downloaded
+p05-turn: keys_persisted
+p05-turn: quoted $0.0085
+p05-turn: submitting
+p05-turn: submitted
+p05-turn: terminal (succeeded)
+p05-turn: settled $0.0085
+p05-turn: downloaded
+p05-walking: keys_persisted
+p05-walking: quoted $0.0085
+p05-walking: submitting
+p05-walking: submitted
+p05-walking: terminal (succeeded)
+p05-walking: settled $0.0085
+p05-walking: downloaded
+p05-upper: keys_persisted
+p05-upper: quoted $0.0085
+p05-upper: submitting
+p05-upper: submitted
+p05-upper: terminal (succeeded)
+p05-upper: settled $0.0085
+p05-upper: downloaded
+p06-standing: keys_persisted
+p06-standing: quoted $0.0085
+p06-standing: submitting
+p06-standing: submitted
+p06-standing: terminal (succeeded)
+p06-standing: settled $0.0085
+p06-standing: downloaded
+p06-seated: keys_persisted
+p06-seated: quoted $0.0085
+p06-seated: submitting
+p06-seated: submitted
+p06-seated: terminal (succeeded)
+p06-seated: settled $0.0085
+p06-seated: downloaded
+p06-turn: keys_persisted
+p06-turn: quoted $0.0085
+p06-turn: submitting
+p06-turn: submitted
+p06-turn: terminal (succeeded)
+p06-turn: settled $0.0085
+p06-turn: downloaded
+p06-walking: keys_persisted
+p06-walking: quoted $0.0085
+p06-walking: submitting
+p06-walking: submitted
+p06-walking: terminal (succeeded)
+p06-walking: settled $0.0085
+p06-walking: downloaded
+p06-upper: keys_persisted
+p06-upper: quoted $0.0085
+p06-upper: submitting
+p06-upper: submitted
+p06-upper: terminal (succeeded)
+p06-upper: settled $0.0085
+p06-upper: downloaded
+p07-standing: keys_persisted
+p07-standing: quoted $0.0085
+p07-standing: submitting
+p07-standing: submitted
+p07-standing: terminal (succeeded)
+p07-standing: settled $0.0085
+p07-standing: downloaded
+p07-seated: keys_persisted
+p07-seated: quoted $0.0085
+p07-seated: submitting
+p07-seated: submitted
+p07-seated: terminal (succeeded)
+p07-seated: settled $0.0085
+p07-seated: downloaded
+p07-turn: keys_persisted
+p07-turn: quoted $0.0085
+p07-turn: submitting
+p07-turn: submitted
+p07-turn: terminal (succeeded)
+p07-turn: settled $0.0085
+p07-turn: downloaded
+p07-walking: keys_persisted
+p07-walking: quoted $0.0085
+p07-walking: submitting
+p07-walking: submitted
+p07-walking: terminal (succeeded)
+p07-walking: settled $0.0085
+p07-walking: downloaded
+p07-upper: keys_persisted
+p07-upper: quoted $0.0085
+p07-upper: submitting
+p07-upper: submitted
+p07-upper: terminal (succeeded)
+p07-upper: settled $0.0085
+p07-upper: downloaded
+p08-standing: keys_persisted
+p08-standing: quoted $0.0085
+p08-standing: submitting
+p08-standing: submitted
+p08-standing: terminal (succeeded)
+p08-standing: settled $0.0085
+p08-standing: downloaded
+p08-seated: keys_persisted
+p08-seated: quoted $0.0085
+p08-seated: submitting
+p08-seated: submitted
+p08-seated: terminal (succeeded)
+p08-seated: settled $0.0085
+p08-seated: downloaded
+p08-turn: keys_persisted
+p08-turn: quoted $0.0085
+p08-turn: submitting
+p08-turn: submitted
+p08-turn: terminal (succeeded)
+p08-turn: settled $0.0085
+p08-turn: downloaded
+p08-walking: keys_persisted
+p08-walking: quoted $0.0085
+p08-walking: submitting
+p08-walking: submitted
+p08-walking: terminal (succeeded)
+p08-walking: settled $0.0085
+p08-walking: downloaded
+p08-upper: keys_persisted
+p08-upper: quoted $0.0085
+p08-upper: submitting
+p08-upper: submitted
+p08-upper: terminal (succeeded)
+p08-upper: settled $0.0085
+p08-upper: downloaded
+p09-standing: keys_persisted
+p09-standing: quoted $0.0085
+p09-standing: submitting
+p09-standing: submitted
+p09-standing: terminal (succeeded)
+p09-standing: settled $0.0085
+p09-standing: downloaded
+p09-seated: keys_persisted
+p09-seated: quoted $0.0085
+p09-seated: submitting
+p09-seated: submitted
+p09-seated: terminal (succeeded)
+p09-seated: settled $0.0085
+p09-seated: downloaded
+p09-turn: keys_persisted
+p09-turn: quoted $0.0085
+p09-turn: submitting
+p09-turn: submitted
+p09-turn: terminal (succeeded)
+p09-turn: settled $0.0085
+p09-turn: downloaded
+p09-walking: keys_persisted
+p09-walking: quoted $0.0085
+p09-walking: submitting
+p09-walking: submitted
+p09-walking: terminal (succeeded)
+p09-walking: settled $0.0085
+p09-walking: downloaded
+p09-upper: keys_persisted
+p09-upper: quoted $0.0085
+p09-upper: submitting
+p09-upper: submitted
+p09-upper: terminal (succeeded)
+p09-upper: settled $0.0085
+p09-upper: downloaded
+p10-standing: keys_persisted
+p10-standing: quoted $0.0085
+p10-standing: submitting
+p10-standing: submitted
+p10-standing: terminal (succeeded)
+p10-standing: settled $0.0085
+p10-standing: downloaded
+p10-seated: keys_persisted
+p10-seated: quoted $0.0085
+p10-seated: submitting
+p10-seated: submitted
+p10-seated: terminal (succeeded)
+p10-seated: settled $0.0085
+p10-seated: downloaded
+p10-turn: keys_persisted
+p10-turn: quoted $0.0085
+p10-turn: submitting
+p10-turn: submitted
+p10-turn: terminal (succeeded)
+p10-turn: settled $0.0085
+p10-turn: downloaded
+p10-walking: keys_persisted
+p10-walking: quoted $0.0085
+p10-walking: submitting
+p10-walking: submitted
+p10-walking: terminal (succeeded)
+p10-walking: settled $0.0085
+p10-walking: downloaded
+p10-upper: keys_persisted
+p10-upper: quoted $0.0085
+p10-upper: submitting
+p10-upper: submitted
+p10-upper: stopped
+Stopped: network_error. No retry.
+p10-upper: recovery_status (running)
+p10-upper: terminal (succeeded)
+p10-upper: settled $0.015
+p10-upper: downloaded
+run: complete $0.431500

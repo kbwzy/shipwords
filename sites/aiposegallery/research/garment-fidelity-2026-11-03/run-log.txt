@@ -1,0 +1,170 @@
+run: balance_checked
+g1-text-tee-standing: keys_persisted
+g1-text-tee-standing: quoted $0.0085
+g1-text-tee-standing: submitting
+g1-text-tee-standing: submitted
+g1-text-tee-standing: terminal (succeeded)
+g1-text-tee-standing: settled $0.0085
+g1-text-tee-standing: downloaded
+g1-text-tee-seated: keys_persisted
+g1-text-tee-seated: quoted $0.0085
+g1-text-tee-seated: submitting
+g1-text-tee-seated: submitted
+g1-text-tee-seated: stopped
+Stopped: network_error. No retry.
+Stopped: one_shot_or_file_already_exists. No retry.
+run: resume_existing_run
+run: balance_checked
+run: resume_scan
+g1-text-tee-standing: skipped_already_settled
+g1-text-tee-seated: skipped_already_settled
+g1-text-tee-turn: keys_persisted
+g1-text-tee-turn: quoted $0.0085
+g1-text-tee-turn: submitting
+g1-text-tee-turn: submitted
+g1-text-tee-turn: terminal (succeeded)
+g1-text-tee-turn: settled $0.0085
+g1-text-tee-turn: downloaded
+g1-text-tee-walking: keys_persisted
+g1-text-tee-walking: quoted $0.0085
+g1-text-tee-walking: submitting
+g1-text-tee-walking: submitted
+g1-text-tee-walking: terminal (succeeded)
+g1-text-tee-walking: settled $0.0085
+g1-text-tee-walking: downloaded
+g1-text-tee-upper: keys_persisted
+g1-text-tee-upper: quoted $0.0085
+g1-text-tee-upper: submitting
+g1-text-tee-upper: submitted
+g1-text-tee-upper: terminal (succeeded)
+g1-text-tee-upper: settled $0.0085
+g1-text-tee-upper: downloaded
+g2-logo-hoodie-standing: keys_persisted
+g2-logo-hoodie-standing: quoted $0.0085
+g2-logo-hoodie-standing: submitting
+g2-logo-hoodie-standing: submitted
+g2-logo-hoodie-standing: terminal (succeeded)
+g2-logo-hoodie-standing: settled $0.0085
+g2-logo-hoodie-standing: downloaded
+g2-logo-hoodie-seated: keys_persisted
+g2-logo-hoodie-seated: quoted $0.0085
+g2-logo-hoodie-seated: submitting
+g2-logo-hoodie-seated: submitted
+g2-logo-hoodie-seated: terminal (succeeded)
+g2-logo-hoodie-seated: settled $0.0085
+g2-logo-hoodie-seated: downloaded
+g2-logo-hoodie-turn: keys_persisted
+g2-logo-hoodie-turn: quoted $0.0085
+g2-logo-hoodie-turn: submitting
+g2-logo-hoodie-turn: submitted
+g2-logo-hoodie-turn: terminal (succeeded)
+g2-logo-hoodie-turn: settled $0.0085
+g2-logo-hoodie-turn: downloaded
+g2-logo-hoodie-walking: keys_persisted
+g2-logo-hoodie-walking: quoted $0.0085
+g2-logo-hoodie-walking: submitting
+g2-logo-hoodie-walking: submitted
+g2-logo-hoodie-walking: terminal (succeeded)
+g2-logo-hoodie-walking: settled $0.0085
+g2-logo-hoodie-walking: downloaded
+g2-logo-hoodie-upper: keys_persisted
+g2-logo-hoodie-upper: quoted $0.0085
+g2-logo-hoodie-upper: submitting
+g2-logo-hoodie-upper: submitted
+g2-logo-hoodie-upper: terminal (succeeded)
+g2-logo-hoodie-upper: settled $0.0085
+g2-logo-hoodie-upper: downloaded
+g3-pattern-blouse-standing: keys_persisted
+g3-pattern-blouse-standing: quoted $0.0085
+g3-pattern-blouse-standing: submitting
+g3-pattern-blouse-standing: submitted
+g3-pattern-blouse-standing: terminal (succeeded)
+g3-pattern-blouse-standing: settled $0.0085
+g3-pattern-blouse-standing: downloaded
+g3-pattern-blouse-seated: keys_persisted
+g3-pattern-blouse-seated: quoted $0.0085
+g3-pattern-blouse-seated: submitting
+g3-pattern-blouse-seated: submitted
+g3-pattern-blouse-seated: terminal (succeeded)
+g3-pattern-blouse-seated: settled $0.0085
+g3-pattern-blouse-seated: downloaded
+g3-pattern-blouse-turn: keys_persisted
+g3-pattern-blouse-turn: quoted $0.0085
+g3-pattern-blouse-turn: submitting
+g3-pattern-blouse-turn: submitted
+g3-pattern-blouse-turn: terminal (succeeded)
+g3-pattern-blouse-turn: settled $0.0085
+g3-pattern-blouse-turn: downloaded
+g3-pattern-blouse-walking: keys_persisted
+g3-pattern-blouse-walking: quoted $0.0085
+g3-pattern-blouse-walking: submitting
+g3-pattern-blouse-walking: submitted
+g3-pattern-blouse-walking: terminal (succeeded)
+g3-pattern-blouse-walking: settled $0.0085
+g3-pattern-blouse-walking: downloaded
+g3-pattern-blouse-upper: keys_persisted
+g3-pattern-blouse-upper: quoted $0.0085
+g3-pattern-blouse-upper: submitting
+g3-pattern-blouse-upper: submitted
+g3-pattern-blouse-upper: terminal (succeeded)
+g3-pattern-blouse-upper: settled $0.0085
+g3-pattern-blouse-upper: downloaded
+g4-sheer-chiffon-standing: keys_persisted
+g4-sheer-chiffon-standing: quoted $0.0085
+g4-sheer-chiffon-standing: submitting
+g4-sheer-chiffon-standing: submitted
+g4-sheer-chiffon-standing: terminal (succeeded)
+g4-sheer-chiffon-standing: settled $0.0085
+g4-sheer-chiffon-standing: downloaded
+g4-sheer-chiffon-seated: keys_persisted
+g4-sheer-chiffon-seated: quoted $0.0085
+g4-sheer-chiffon-seated: submitting
+g4-sheer-chiffon-seated: submitted
+g4-sheer-chiffon-seated: terminal (succeeded)
+g4-sheer-chiffon-seated: settled $0.0085
+g4-sheer-chiffon-seated: downloaded
+g4-sheer-chiffon-turn: keys_persisted
+g4-sheer-chiffon-turn: stopped
+Stopped: network_error. No retry.
+run: resume_existing_run
+run: balance_checked
+run: resume_scan
+g1-text-tee-standing: skipped_already_settled
+g1-text-tee-seated: skipped_already_settled
+g1-text-tee-turn: skipped_already_settled
+g1-text-tee-walking: skipped_already_settled
+g1-text-tee-upper: skipped_already_settled
+g2-logo-hoodie-standing: skipped_already_settled
+g2-logo-hoodie-seated: skipped_already_settled
+g2-logo-hoodie-turn: skipped_already_settled
+g2-logo-hoodie-walking: skipped_already_settled
+g2-logo-hoodie-upper: skipped_already_settled
+g3-pattern-blouse-standing: skipped_already_settled
+g3-pattern-blouse-seated: skipped_already_settled
+g3-pattern-blouse-turn: skipped_already_settled
+g3-pattern-blouse-walking: skipped_already_settled
+g3-pattern-blouse-upper: skipped_already_settled
+g4-sheer-chiffon-standing: skipped_already_settled
+g4-sheer-chiffon-seated: skipped_already_settled
+g4-sheer-chiffon-turn: keys_persisted
+g4-sheer-chiffon-turn: quoted $0.0085
+g4-sheer-chiffon-turn: submitting
+g4-sheer-chiffon-turn: submitted
+g4-sheer-chiffon-turn: terminal (succeeded)
+g4-sheer-chiffon-turn: settled $0.0085
+g4-sheer-chiffon-turn: downloaded
+g4-sheer-chiffon-walking: keys_persisted
+g4-sheer-chiffon-walking: quoted $0.0085
+g4-sheer-chiffon-walking: submitting
+g4-sheer-chiffon-walking: submitted
+g4-sheer-chiffon-walking: terminal (succeeded)
+g4-sheer-chiffon-walking: settled $0.0085
+g4-sheer-chiffon-walking: downloaded
+g4-sheer-chiffon-upper: keys_persisted
+g4-sheer-chiffon-upper: quoted $0.0085
+g4-sheer-chiffon-upper: submitting
+g4-sheer-chiffon-upper: submitted
+g4-sheer-chiffon-upper: terminal (succeeded)
+g4-sheer-chiffon-upper: settled $0.0085
+g4-sheer-chiffon-upper: downloaded
+run: complete $0.025500

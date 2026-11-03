@@ -1,0 +1,19 @@
+{
+  "keys": {
+    "generation": "garment-fidelity20-bd47d42e-d628-446b-af07-e5f1d71bf7f7",
+    "garment_upload": "garment-fidelity20-bd47d42e-d628-446b-af07-e5f1d71bf7f7-garment",
+    "pose_upload": "garment-fidelity20-bd47d42e-d628-446b-af07-e5f1d71bf7f7-pose"
+  },
+  "garment_sha256": "16ed8d1b085693ffc78eea0ebaf336b3c40378f6eaeb6556a4899588885bbadb",
+  "pose_sha256": "80f879f663ff9a4144da1e262d6a6bf6bd64dc7deb78dea73d79d98309776c54",
+  "model": "openai/gpt-image-2.5-sunburst",
+  "parameters": {
+    "resolution": "1K",
+    "aspect_ratio": "3:4",
+    "quality": "medium",
+    "n": 1
+  },
+  "prompt": "The first reference is a garment product photo: reproduce this exact garment faithfully — its shape, color, print pattern, logo, text, and fabric — worn by a model. Do not alter, restyle, or embellish the garment. The second reference is the pose reference: use only its body pose and composition, not its clothing or person.\nCreate one portrait-oriented e-commerce photo of a model wearing this garment, standing in a clean studio. User instructions: Use the reference pose.",
+  "max_cost": "0.30",
+  "quote_cap_usd": 0.15
+}

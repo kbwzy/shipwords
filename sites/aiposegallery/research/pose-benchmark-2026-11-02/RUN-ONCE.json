@@ -1,0 +1,6 @@
+{
+  "created_at": "2026-11-02T17:27:29.485Z",
+  "policy": "one shot; failures and uncertain outcomes are recorded, never retried",
+  "pairs": 50,
+  "budget_usd": 2.5
+}

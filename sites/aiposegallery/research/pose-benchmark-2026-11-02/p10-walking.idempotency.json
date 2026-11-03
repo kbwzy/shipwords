@@ -1,0 +1,19 @@
+{
+  "keys": {
+    "generation": "pose-benchmark50-136331a5-a8b6-4e1d-8594-a658d242b433",
+    "person_upload": "pose-benchmark50-136331a5-a8b6-4e1d-8594-a658d242b433-person",
+    "pose_upload": "pose-benchmark50-136331a5-a8b6-4e1d-8594-a658d242b433-pose"
+  },
+  "person_sha256": "9d3b552bc550ec4e24e31e2570dfb94afb2bd131084be0b599bbccd4dc36e87c",
+  "pose_sha256": "18a7a030e0291bb4a1178f0a1df86d54fc810365ee03f2c6ab70d767ef057629",
+  "model": "openai/gpt-image-2.5-sunburst",
+  "parameters": {
+    "resolution": "1K",
+    "aspect_ratio": "3:4",
+    "quality": "medium",
+    "n": 1
+  },
+  "prompt": "The first reference is the person photo: preserve that person’s identity, face, and clothing. The second reference is the pose reference: use only its body pose and composition, not its person, identity, face, or clothing.\nCreate one portrait-oriented image. User instructions: Use the reference pose.",
+  "max_cost": "0.30",
+  "quote_cap_usd": 0.15
+}
