@@ -66,4 +66,10 @@ describe('analytics script', () => {
     expect(JSON.stringify(scripts)).toContain('G-TEST');
     expect(analyticsScripts({ analytics: {} } as unknown as SiteConfig)).toEqual([]);
   });
+
+  it('Clarity script embeds the project id', () => {
+    const scripts = analyticsScripts({ analytics: { clarity: 'z7nnys9r4v' } } as unknown as SiteConfig);
+    expect(JSON.stringify(scripts)).toContain('https://www.clarity.ms/tag/');
+    expect(JSON.stringify(scripts)).toContain('z7nnys9r4v');
+  });
 });

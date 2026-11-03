@@ -1,4 +1,5 @@
 import { createRootRoute, HeadContent, Link, Outlet, Scripts } from '@tanstack/react-router';
+import { analyticsScripts } from '@shipwords/core/analytics';
 import type { ReactNode } from 'react';
 import { getLocale } from '~/paraglide/runtime.js';
 import { getPublicConfig } from '~/lib/public-config';
@@ -10,6 +11,7 @@ import { AccountDialog, AccountLink } from '~/site/account';
 import { PricingDialog } from '~/site/pricing';
 import { openSignIn, SignInDialog } from '~/site/sign-in';
 import appCss from '~/site/styles.css?url';
+import site from '../../site.config';
 
 export const Route = createRootRoute({
   loader: () => getPublicConfig(),
@@ -19,6 +21,7 @@ export const Route = createRootRoute({
       { rel: 'stylesheet', href: appCss },
       { rel: 'icon', href: '/favicon.svg?v=3', type: 'image/svg+xml' },
     ],
+    scripts: import.meta.env.DEV ? [] : analyticsScripts(site),
   }),
   shellComponent: Document,
   component: Layout,

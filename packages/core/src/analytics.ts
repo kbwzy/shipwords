@@ -17,6 +17,12 @@ export function analyticsScripts(site: SiteConfig) {
       },
     );
   }
+  const clarity = site.analytics?.clarity;
+  if (clarity) {
+    scripts.push({
+      children: `(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window, document, "clarity", "script", "${clarity}");`,
+    });
+  }
   const rybbit = site.analytics?.rybbit;
   // Rybbit treats everything in src before /script.js as the reporting endpoint, so events also land under /stats/.
   if (rybbit) scripts.push({ src: `${RYBBIT_PATH}/script.js?siteId=${rybbit.siteId}`, defer: true });
