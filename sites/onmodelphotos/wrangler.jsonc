@@ -1,0 +1,32 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "onmodelphotos",
+  "main": "src/server.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  "upload_source_maps": true,
+  "vars": {
+    "EMAIL_FROM": "noreply@onmodelphotos.com",
+    // To enable Rybbit, set this to your Rybbit API URL (e.g. https://rybbit.example.com/api) and add analytics.rybbit to site.config.ts.
+    "RYBBIT_UPSTREAM": ""
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "onmodelphotos",
+      "database_id": "017ca525-a2af-4e2c-b99d-b4221a9e0c14",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [{ "binding": "GARMENT_MEDIA", "bucket_name": "onmodelphotos-garment-media" }],
+  "send_email": [{ "name": "EMAIL" }],
+  "workflows": [
+    {
+      "name": "onmodelphotos-garment",
+      "binding": "GARMENT_WORKFLOW",
+      "class_name": "GarmentWorkflow"
+    }
+  ],
+  "triggers": { "crons": ["*/10 * * * *"] }
+}
