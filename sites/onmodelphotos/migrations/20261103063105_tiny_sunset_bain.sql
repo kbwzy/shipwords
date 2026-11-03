@@ -1,0 +1,1 @@
+ALTER TABLE `garment_requests` ADD `user_id` text;

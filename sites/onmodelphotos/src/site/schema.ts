@@ -11,6 +11,8 @@ export const garmentRequests = sqliteTable('garment_requests', {
   ipHash: text('ip_hash'),
   status: text('status', { enum: ['accepted', 'preparing', 'quoted', 'submitting', 'submitted', 'result_pending', 'succeeded', 'failed', 'unknown'] }).notNull().default('accepted'),
   createdAt: integer('created_at').notNull(),
+  // Set for signed-in users so paid work survives guest-cookie rotation; null for guest trials.
+  userId: text('user_id'),
   upstreamJobId: text('upstream_job_id'),
   outputKey: text('output_key'),
   errorCode: text('error_code'),
