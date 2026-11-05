@@ -1,0 +1,19 @@
+{
+  "steps": [
+    {
+      "step": "session",
+      "status": 200
+    },
+    {
+      "step": "submit",
+      "status": 202,
+      "id": "1dd3f072-0f9c-472e-81f5-89d7fe05330f",
+      "state": "accepted",
+      "error": null
+    }
+  ],
+  "job": {
+    "id": "1dd3f072-0f9c-472e-81f5-89d7fe05330f",
+    "status": "accepted"
+  }
+}

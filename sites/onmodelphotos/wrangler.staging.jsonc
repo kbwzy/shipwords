@@ -19,8 +19,9 @@
     "GARMENT_STAGING": "true",
     "GARMENT_TRIAL_ENABLED": "true",
     "GARMENT_ALLOWED_ORIGIN": "https://onmodelphotos-staging.penghuolin1990.workers.dev",
-    "GARMENT_UPLOAD_HOSTS": "3486cb59ef8bd2a49013dcfc3e334638.r2.cloudflarestorage.com",
-    "GARMENT_RESULT_HOSTS": "3486cb59ef8bd2a49013dcfc3e334638.r2.cloudflarestorage.com",
+    // Yir signs upload and result URLs on its own R2 S3 endpoint (75397736…, observed in aiposegallery research); the allowlist must match, not our account's endpoint.
+    "GARMENT_UPLOAD_HOSTS": "75397736ff6ffddf6c5d8208a05fa738.r2.cloudflarestorage.com",
+    "GARMENT_RESULT_HOSTS": "75397736ff6ffddf6c5d8208a05fa738.r2.cloudflarestorage.com",
     "EMAIL_FROM": "noreply@onmodelphotos.com",
     "RYBBIT_UPSTREAM": ""
   },
