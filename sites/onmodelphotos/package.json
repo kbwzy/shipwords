@@ -42,5 +42,6 @@
     "typescript": "6.0.3",
     "vite": "8.3.5",
     "wrangler": "4.153.0"
-  }
+  },
+  "devPort": 5030
 }
