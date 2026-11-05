@@ -5,6 +5,9 @@ import tailwindcss from '@tailwindcss/vite';
 import { tanstackStart } from '@tanstack/react-start/plugin/vite';
 import viteReact from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
+import { installLocalInlangPluginFetch } from './scripts/local-inlang-plugin.mjs';
+
+installLocalInlangPluginFetch();
 
 // Builds write Paraglide output to their own dir, not src/paraglide: that one belongs to the dev server and typecheck,
 // and overwriting it with en-only output during check makes a running dev server recompile and lose the zh toggle.

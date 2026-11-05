@@ -1,7 +1,7 @@
 import { getRouteApi, Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { useCheckout } from '@shipwords/core/react/account';
-import type { Product } from '@shipwords/core/site';
+import type { CreditPackProduct } from '@shipwords/core/site';
 import { authClient } from '~/lib/auth';
 import { track } from '~/lib/track';
 import { m } from '~/paraglide/messages.js';
@@ -10,10 +10,7 @@ import site from '../../site.config';
 import { formatPrice, RESUME_PATH } from './pricing';
 import './landing-plans.css';
 
-function describe(product: Product) {
-  if (product.kind === 'subscription') {
-    return m.common_plan_subscription({ credits: product.creditsPerPeriod.toLocaleString(), interval: product.interval });
-  }
+function describe(product: CreditPackProduct) {
   return product.expiresDays
     ? m.common_plan_credits_expiring({ credits: product.credits.toLocaleString(), days: product.expiresDays })
     : m.common_plan_credits({ credits: product.credits.toLocaleString() });
@@ -48,7 +45,7 @@ export function LandingPlans({ page = false }: { page?: boolean }) {
         {site.products.map((product) => (
           <article key={product.id} className="landing-plans__card">
             <p className="landing-plans__card-name">{product.name}</p>
-            <p className="landing-plans__credits">{product.kind === 'credits' ? product.credits : product.creditsPerPeriod}<span> credits</span></p>
+            <p className="landing-plans__credits">{product.credits}<span> credits</span></p>
             <p className="landing-plans__price">{formatPrice(product)}</p>
             <p className="landing-plans__description">{describe(product)}</p>
             <button

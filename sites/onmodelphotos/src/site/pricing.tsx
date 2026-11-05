@@ -1,5 +1,5 @@
 import { useCheckout } from '@shipwords/core/react/account';
-import type { Product } from '@shipwords/core/site';
+import type { CreditPackProduct } from '@shipwords/core/site';
 import { getRouteApi, Link } from '@tanstack/react-router';
 import { type MouseEvent, type ReactNode, useEffect, useRef } from 'react';
 import { authClient } from '~/lib/auth';
@@ -20,21 +20,14 @@ export function openPricing(source: string) {
   window.dispatchEvent(new Event(OPEN_EVENT));
 }
 
-export function formatPrice(product: Product) {
-  const amount = new Intl.NumberFormat('en-US', {
+export function formatPrice(product: CreditPackProduct) {
+  return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: product.price.currency,
   }).format(product.price.amount / 100);
-  return product.kind === 'subscription' ? `${amount}/${product.interval}` : amount;
 }
 
-function describe(product: Product) {
-  if (product.kind === 'subscription') {
-    return m.common_plan_subscription({
-      credits: product.creditsPerPeriod.toLocaleString(),
-      interval: product.interval,
-    });
-  }
+function describe(product: CreditPackProduct) {
   return product.expiresDays
     ? m.common_plan_credits_expiring({ credits: product.credits.toLocaleString(), days: product.expiresDays })
     : m.common_plan_credits({ credits: product.credits.toLocaleString() });
@@ -108,11 +101,7 @@ export function Plans({
               disabled={pending !== null}
               onClick={() => buy(product.id)}
             >
-              {pending === product.id
-                ? m.common_plan_redirecting()
-                : product.kind === 'subscription'
-                  ? m.common_plan_subscribe()
-                  : m.common_plan_buy()}
+              {pending === product.id ? m.common_plan_redirecting() : m.common_plan_buy()}
             </button>
           </article>
         ))}

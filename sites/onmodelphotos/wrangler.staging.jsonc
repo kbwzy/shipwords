@@ -1,0 +1,29 @@
+// Dedicated isolated staging resources. Production uses wrangler.jsonc.
+// Mirrors aiposegallery's wrangler.staging.jsonc: private token gate, isolated D1/R2/Workflow.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "onmodelphotos-staging",
+  "main": "src/server.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "d1_databases": [{
+    "binding": "DB",
+    "database_name": "onmodelphotos-staging-db",
+    "database_id": "4fc19cf5-6143-480b-aa06-c51bf46b70d1",
+    "migrations_dir": "migrations"
+  }],
+  "r2_buckets": [{ "binding": "GARMENT_MEDIA", "bucket_name": "onmodelphotos-staging-media" }],
+  "workflows": [{ "binding": "GARMENT_WORKFLOW", "name": "onmodelphotos-staging-garment", "class_name": "GarmentWorkflow" }],
+  "triggers": { "crons": ["*/10 * * * *"] },
+  "vars": {
+    "GARMENT_STAGING": "true",
+    "GARMENT_TRIAL_ENABLED": "true",
+    "GARMENT_ALLOWED_ORIGIN": "https://onmodelphotos-staging.penghuolin1990.workers.dev",
+    "GARMENT_UPLOAD_HOSTS": "3486cb59ef8bd2a49013dcfc3e334638.r2.cloudflarestorage.com",
+    "GARMENT_RESULT_HOSTS": "3486cb59ef8bd2a49013dcfc3e334638.r2.cloudflarestorage.com",
+    "EMAIL_FROM": "noreply@onmodelphotos.com",
+    "RYBBIT_UPSTREAM": ""
+  },
+  "observability": { "enabled": true },
+  "upload_source_maps": true
+}

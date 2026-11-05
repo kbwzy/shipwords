@@ -1,4 +1,4 @@
-import { openBillingPortal, useAccount } from '@shipwords/core/react/account';
+import { useAccount } from '@shipwords/core/react/account';
 import { getRouteApi, Link } from '@tanstack/react-router';
 import { type MouseEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import { authClient } from '~/lib/auth';
@@ -10,8 +10,6 @@ import site from '../../site.config';
 // The /account page stays for no-JS visitors and direct links, sharing AccountPanel.
 
 const OPEN_EVENT = 'site:account';
-/** With credit packs only there is no subscription to manage, so the Customer Portal link is hidden. */
-const SELLS_SUBSCRIPTIONS = site.products.some((p) => p.kind === 'subscription');
 
 export function openAccount() {
   window.dispatchEvent(new Event(OPEN_EVENT));
@@ -180,7 +178,6 @@ export function AccountPanel({
       </p>
     );
   }
-  const subscription = data.subscription;
   return (
     <>
       <Heading id="account-title">{m.common_account_heading()}</Heading>
@@ -211,26 +208,6 @@ export function AccountPanel({
           {m.common_account_get_more()}
         </button>
       </div>
-
-      {SELLS_SUBSCRIPTIONS && (
-        <div className="account-card">
-          <h3>{m.common_account_subscription()}</h3>
-          {subscription ? (
-            <p>
-              {productName(subscription.productId)} · {subscription.status}
-              {subscription.currentPeriodEnd &&
-                ` · ${(subscription.cancelAtPeriodEnd ? m.common_account_subscription_ends : m.common_account_subscription_renews)({ date: date(subscription.currentPeriodEnd) })}`}
-            </p>
-          ) : (
-            <p className="muted">{m.common_account_no_subscription()}</p>
-          )}
-          {data.orders.length > 0 && (
-            <button type="button" onClick={() => void openBillingPortal('/account')}>
-              {m.common_account_manage_billing()}
-            </button>
-          )}
-        </div>
-      )}
 
       <MyResults />
 
