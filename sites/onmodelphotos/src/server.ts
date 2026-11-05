@@ -37,7 +37,9 @@ export default {
       let allowedOrigin: string;
       try {
         const parsed=new URL(garment.GARMENT_ALLOWED_ORIGIN ?? '');
-        if (parsed.protocol!=='https:' || parsed.origin!==garment.GARMENT_ALLOWED_ORIGIN || parsed.username || parsed.password) throw new Error('Invalid origin');
+        // Local dev serves plain http; only dev builds may allow it, the deployed bundle has no localhost branch.
+        if (import.meta.env.DEV ? (parsed.protocol!=='http:' && parsed.protocol!=='https:') : parsed.protocol!=='https:') throw new Error('Invalid origin');
+        if (parsed.origin!==garment.GARMENT_ALLOWED_ORIGIN || parsed.username || parsed.password) throw new Error('Invalid origin');
         allowedOrigin=parsed.origin;
       } catch { return new Response('Unavailable',{status:503,headers:{'Cache-Control':'no-store'}}); }
       if (url.origin!==allowedOrigin || !garment.DB || !garment.GARMENT_MEDIA || !garment.GARMENT_WORKFLOW || !garment.GUEST_COOKIE_SECRET || !garment.GARMENT_IP_SECRET || garment.GARMENT_IP_SECRET.length<32) return new Response('Unavailable',{status:503,headers:{'Cache-Control':'no-store'}});
