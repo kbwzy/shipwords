@@ -9,7 +9,13 @@
   "vars": {
     "EMAIL_FROM": "noreply@onmodelphotos.com",
     // To enable Rybbit, set this to your Rybbit API URL (e.g. https://rybbit.example.com/api) and add analytics.rybbit to site.config.ts.
-    "RYBBIT_UPSTREAM": ""
+    "RYBBIT_UPSTREAM": "",
+    // Garment pipeline: fail-closed until every var below and all secrets are configured.
+    "GARMENT_TRIAL_ENABLED": "true",
+    "GARMENT_ALLOWED_ORIGIN": "https://onmodelphotos.com",
+    // Yir signs upload and result URLs on its own R2 S3 endpoint (75397736…, observed in aiposegallery research); the allowlist must match, not our account's endpoint.
+    "GARMENT_UPLOAD_HOSTS": "75397736ff6ffddf6c5d8208a05fa738.r2.cloudflarestorage.com",
+    "GARMENT_RESULT_HOSTS": "75397736ff6ffddf6c5d8208a05fa738.r2.cloudflarestorage.com"
   },
   "d1_databases": [
     {
@@ -28,5 +34,8 @@
       "class_name": "GarmentWorkflow"
     }
   ],
-  "triggers": { "crons": ["*/10 * * * *"] }
+  // Free plan cron budget is full (aiposegallery + cyanvid + video-template-staging = 5/5);
+  // the recovery scheduler stays off until a slot frees up. Failed jobs still settle
+  // through the synchronous workflow path; recovery only matters for interrupted ones.
+  "triggers": { "crons": [] }
 }
