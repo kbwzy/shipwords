@@ -4,7 +4,7 @@ import { paraglideMiddleware } from '~/paraglide/server.js';
 import { poseLedger } from './site/pose-billing.server';
 import { handlePoseHttp, type PoseHttpEnv } from './site/pose-http.server';
 import { createPoseWorkflowDependencies } from './site/pose-workflow.server';
-import { schedulePoseRecoveries } from './site/pose-recovery-scheduler.server';
+import { schedulePoseRecoveries, schedulePoseRefunds } from './site/pose-recovery-scheduler.server';
 export { PoseWorkflow } from './site/pose-workflow.cloudflare';
 
 // The template's generic jobs/upload API stays closed; pose generation, billing
@@ -12,6 +12,8 @@ export { PoseWorkflow } from './site/pose-workflow.cloudflare';
 export default {
   async scheduled(_event, env) {
     const pose=env as Env & {POSE_TRIAL_ENABLED?:string; POSE_MEDIA?:R2Bucket; POSE_WORKFLOW?:PoseHttpEnv['workflow']; POSE_RESULT_HOSTS?:string; POSE_UPLOAD_HOSTS?:string; WAFFO_MERCHANT_ID?:string; WAFFO_PRIVATE_KEY?:string; WAFFO_ENVIRONMENT?:string};
+    if(!pose.DB)return;
+    await schedulePoseRefunds(pose.DB);
     if(pose.POSE_TRIAL_ENABLED!=='true'||!pose.POSE_MEDIA||!pose.POSE_WORKFLOW)return;
     const deps=createPoseWorkflowDependencies({DB:pose.DB,POSE_MEDIA:pose.POSE_MEDIA,YIR_API_KEY:pose.YIR_API_KEY,POSE_RESULT_HOSTS:pose.POSE_RESULT_HOSTS??'',POSE_UPLOAD_HOSTS:pose.POSE_UPLOAD_HOSTS??'',WAFFO_MERCHANT_ID:pose.WAFFO_MERCHANT_ID,WAFFO_PRIVATE_KEY:pose.WAFFO_PRIVATE_KEY,WAFFO_ENVIRONMENT:pose.WAFFO_ENVIRONMENT},undefined,undefined,poseLedger(pose.DB).refund);
     await schedulePoseRecoveries(deps,{workflow:pose.POSE_WORKFLOW});

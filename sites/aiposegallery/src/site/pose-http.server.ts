@@ -5,7 +5,7 @@ import { getPrivateImage } from './private-media.server.ts';
 type Workflow = {create(options:{id:string;params:{jobId:string}}):Promise<unknown>;get(id:string):Promise<{status():Promise<{status:string}>}>};
 export type PoseHttpEnv = {db:D1Database;bucket:R2Bucket;workflow:Workflow;origin:string;cookieSecret:string;ipHashSecret?:string;
   authUser?: (request:Request)=>Promise<{id:string}|null>;
-  ledger?: {spend(userId:string,requestKey:string):Promise<'ok'|'insufficient'|'unavailable'>;refund(requestKey:string):Promise<void>};
+  ledger?: {spend(userId:string,requestKey:string,taskId:string):Promise<'ok'|'insufficient'|'unavailable'>;refund(requestKey:string,taskId:string):Promise<void>};
 };
 type Job = {id:string;owner_id:string;status:string;output_key:string|null;error_code:string|null;created_at:number};
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -14,12 +14,12 @@ const json=(value:unknown,status=200)=>new Response(JSON.stringify(value),{statu
 async function visibleStatus(env:PoseHttpEnv, job:Pick<Job,'id'|'status'>):Promise<string> {
   if(job.status==='unknown')return 'needs_attention';
   if(!['accepted','preparing','quoted','submitting','submitted','result_pending'].includes(job.status))return job.status;
-  if(job.status==='accepted' && !await env.bucket.head(`pose-tasks/${job.id}/manifest.json`))return 'input_required';
   try {
+    if(job.status==='accepted' && !await env.bucket.head(`pose-tasks/${job.id}/manifest.json`))return 'needs_attention';
     const workflow=await env.workflow.get(job.id), state=await workflow.status();
-    if(['errored','terminated','unknown'].includes(state.status))return job.status==='accepted' && state.status==='unknown'?'input_required':'needs_attention';
+    if(['errored','terminated','unknown'].includes(state.status))return 'needs_attention';
     if(state.status==='complete')return 'needs_attention';
-  } catch { return job.status==='accepted'?'input_required':'needs_attention'; }
+  } catch { return 'needs_attention'; }
   return job.status;
 }
 
@@ -40,7 +40,7 @@ export async function handlePoseHttp(request:Request,env:PoseHttpEnv):Promise<Re
   const ownerId=await poseSessionOwner(request,env.cookieSecret);
   const auth=env.authUser?await env.authUser(request):null;
   let job=ownerId
-    ? await env.db.prepare('SELECT id, owner_id, status, output_key, error_code, created_at FROM pose_requests WHERE id = ? AND owner_id = ?').bind(match[1],ownerId).first<Job>()
+    ? await env.db.prepare('SELECT id, owner_id, status, output_key, error_code, created_at FROM pose_requests WHERE id = ? AND owner_id = ? AND user_id IS NULL').bind(match[1],ownerId).first<Job>()
     : null;
   if(!job && auth) {
     job=await env.db.prepare('SELECT id, owner_id, status, output_key, error_code, created_at FROM pose_requests WHERE id = ? AND user_id = ?').bind(match[1],auth.id).first<Job>();

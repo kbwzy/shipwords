@@ -15,7 +15,7 @@ export default defineSite({
   locales: ['en'],
   defaultLocale: 'en',
   products,
-  signup: { bonusCredits: 0, bonusExpiresDays: null, bonusPerIpDaily: 0 },
+  signup: { bonusCredits: 0, bonusExpiresDays: null, bonusPerIpDaily: 0, bonusSiteDaily: 0 },
   guest: { dailyPerDevice: 0, dailyPerIp: 0, dailySiteBudget: 0, minRecaptchaScore: 0.5 },
   billing: { provider: 'waffo' },
   analytics: { ga4: 'G-9YRWPVK12E', clarity: 'z7nnys9r4v' },

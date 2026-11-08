@@ -23,13 +23,15 @@ export type PoseWorkflowDependencies = {
   fetcher?: typeof fetch;
   promptScanner?: PromptScanner;
   /** Refund one spent credit on a confirmed failure; no-ops for guest/trial tasks. */
-  refund?: (requestKey: string) => Promise<void>;
+  refund?: (requestKey: string, taskId: string) => Promise<void>;
   now?: () => number;
 };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const quoteKey = (id: string) => `pose-tasks/${id}/quoted-request.json`;
 const resultKey = (id: string) => `pose-tasks/${id}/result.json`;
+const REFUNDABLE_FAILURES = new Set(['multi_person_prompt_blocked', 'prompt_screening_unavailable', 'prompt_blocked', 'prompt_review_required', 'quote_unavailable_or_over_budget', 'quote_expired_or_invalid', 'workflow_pre_submit_failed']);
+
 const MEDIA_KEY = /^pose-media\/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
 function poseUploadErrorCode(error:unknown):string {
@@ -74,11 +76,15 @@ export async function advancePoseWorkflow(deps: PoseWorkflowDependencies, id: st
   const now = () => (deps.now ?? Date.now)();
   const requestKey = row.request_key;
   const move = (from: Status, to: Status, extra: { upstreamJobId?: string; outputKey?: string; errorCode?: string } = {}) =>
-    transitionPoseRequest(deps.db, { id, from, to, nowMs: now(), ...extra }).then((applied) => {
-      if (applied && to === 'failed') void deps.refund?.(requestKey);
+    transitionPoseRequest(deps.db, { id, from, to, nowMs: now(), ...extra }).then(async (applied) => {
+      if (applied && to === 'failed' && extra.errorCode && REFUNDABLE_FAILURES.has(extra.errorCode)) await deps.refund?.(requestKey, id);
       return applied;
     });
 
+  if (row.status === 'failed' && !row.upstream_job_id && row.error_code && REFUNDABLE_FAILURES.has(row.error_code)) {
+    await deps.refund?.(requestKey, id);
+    return row.status;
+  }
   if (row.status === 'accepted') {
     await move('accepted', 'preparing');
     row = await rowFor(deps.db, id);
@@ -98,9 +104,11 @@ export async function advancePoseWorkflow(deps: PoseWorkflowDependencies, id: st
         await move('preparing', 'failed', { errorCode: 'multi_person_prompt_blocked' });
         return (await rowFor(deps.db, id)).status;
       }
-      if (!deps.promptScanner) throw new Error('Prompt screening unavailable');
       let promptVerdict: Awaited<ReturnType<PromptScanner['scanPrompt']>>;
-      try { promptVerdict = await deps.promptScanner.scanPrompt(posePrompt({ hasPhoto: !!input.photo, hasPose: !!input.pose, instructions: input.prompt })); }
+      try {
+        if (!deps.promptScanner) throw new Error('Prompt screening unavailable');
+        promptVerdict = await deps.promptScanner.scanPrompt(posePrompt({ hasPhoto: !!input.photo, hasPose: !!input.pose, instructions: input.prompt }));
+      }
       catch { await move('preparing', 'failed', { errorCode: 'prompt_screening_unavailable' }); return (await rowFor(deps.db, id)).status; }
       if (promptVerdict.action !== 'allow') {
         await move('preparing', 'failed', { errorCode: promptVerdict.action === 'block' ? 'prompt_blocked' : 'prompt_review_required' });
@@ -229,8 +237,19 @@ export type PoseRecoveryResult = {
  */
 export async function recoverPoseWorkflow(deps: PoseWorkflowDependencies, id: string): Promise<PoseRecoveryResult> {
   let row = await rowFor(deps.db, id);
-  // Recovery must never enter preparation or submit a chargeable request. In particular,
-  // do not change an in-flight submitting row; the original call may still return its ID.
+  // The caller must have independently verified that the original Workflow is terminal.
+  // Compete with the only submit permission (quoted -> submitting) in D1. A stale
+  // read is harmless: never fail a row whose submit claim or upstream ID won.
+  if (row.status === 'preparing' || row.status === 'quoted') {
+    await deps.db.prepare(`UPDATE pose_requests SET status = 'failed', error_code = 'workflow_pre_submit_failed', updated_at = ?
+      WHERE id = ? AND status = ? AND upstream_job_id IS NULL RETURNING id`)
+      .bind((deps.now ?? Date.now)(), id, row.status).first<{ id: string }>();
+    row = await rowFor(deps.db, id);
+  }
+  // Do not change an in-flight submitting row; the original call may still return its ID.
+  if (row.status === 'failed' && !row.upstream_job_id && row.error_code && REFUNDABLE_FAILURES.has(row.error_code)) {
+    await advancePoseWorkflow(deps, id);
+  }
   if (row.upstream_job_id && ['submitted', 'result_pending', 'unknown'].includes(row.status)) {
     try { await advancePoseWorkflow(deps, id); } catch { /* Keep the durable state. */ }
   }
@@ -283,13 +302,17 @@ export async function runPoseWorkflow(deps: PoseWorkflowDependencies, jobId: str
 }
 
 /** Production wiring must supply the secret, private bucket and a separately verified hostname allowlist. */
-export function createPoseWorkflowDependencies(env: { DB: D1Database; POSE_MEDIA: R2Bucket; YIR_API_KEY: string; POSE_RESULT_HOSTS: string; POSE_UPLOAD_HOSTS: string; WAFFO_MERCHANT_ID?: string; WAFFO_PRIVATE_KEY?: string; WAFFO_ENVIRONMENT?: string }, fetcher?: typeof fetch, promptScanner?: PromptScanner, refund?: (requestKey: string) => Promise<void>): PoseWorkflowDependencies {
+export function createPoseWorkflowDependencies(env: { DB: D1Database; POSE_MEDIA: R2Bucket; YIR_API_KEY: string; POSE_RESULT_HOSTS: string; POSE_UPLOAD_HOSTS: string; WAFFO_MERCHANT_ID?: string; WAFFO_PRIVATE_KEY?: string; WAFFO_ENVIRONMENT?: string }, fetcher?: typeof fetch, promptScanner?: PromptScanner, refund?: (requestKey: string, taskId: string) => Promise<void>): PoseWorkflowDependencies {
   const parseHosts = (value: string | undefined) => {
     const hosts = (value ?? '').split(',').map((host) => host.trim()).filter(Boolean);
     if (!hosts.length || hosts.some((host) => !/^(?=.{1,253}$)(?:[a-z0-9]+(?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,63}$/.test(host))) throw new Error('Pose provider hosts not configured');
     return hosts;
   };
   const environment = env.WAFFO_ENVIRONMENT === 'prod' || env.WAFFO_ENVIRONMENT === 'production' ? 'prod' : env.WAFFO_ENVIRONMENT === 'test' ? 'test' : undefined;
-  const scanner = promptScanner ?? (env.WAFFO_MERCHANT_ID && env.WAFFO_PRIVATE_KEY && environment ? createWaffoPromptScanner({ merchantId: env.WAFFO_MERCHANT_ID, privateKey: env.WAFFO_PRIVATE_KEY, environment, fetcher }) : undefined);
+  let scanner = promptScanner;
+  if (!scanner && env.WAFFO_MERCHANT_ID && env.WAFFO_PRIVATE_KEY && environment) {
+    try { scanner = createWaffoPromptScanner({ merchantId: env.WAFFO_MERCHANT_ID, privateKey: env.WAFFO_PRIVATE_KEY, environment, fetcher }); }
+    catch { /* Treat invalid scanner configuration as unavailable during preparation. */ }
+  }
   return { db: env.DB, bucket: env.POSE_MEDIA, client: createPoseYirClient(env.YIR_API_KEY, fetcher), resultHosts: parseHosts(env.POSE_RESULT_HOSTS), uploadHosts: parseHosts(env.POSE_UPLOAD_HOSTS), fetcher, promptScanner: scanner, refund };
 }

@@ -10,7 +10,7 @@ type PoseWorkflow = {create(options:{id:string;params:{jobId:string}}):Promise<u
 type Dependencies = {db:D1Database;bucket:R2Bucket;workflow:PoseWorkflow;origin:string;cookieSecret:string;ipHashSecret?:string;
   /** Signed-in user for billing; absent until auth is configured. */
   authUser?: (request:Request)=>Promise<{id:string}|null>;
-  ledger?: {spend(userId:string,requestKey:string):Promise<'ok'|'insufficient'|'unavailable'>;refund(requestKey:string):Promise<void>};
+  ledger?: {spend(userId:string,requestKey:string,taskId:string):Promise<'ok'|'insufficient'|'unavailable'>;refund(requestKey:string,taskId:string):Promise<void>};
 };
 const json=(value:unknown,status=200)=>new Response(JSON.stringify(value),{status,headers:{'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
 const validKey=(value:string|null):value is string => !!value && /^[A-Za-z0-9_-]{8,128}$/.test(value);
@@ -36,23 +36,24 @@ export async function createPoseJob(request:Request,deps:Dependencies):Promise<R
     }
     const inputDigest=await poseInputDigest(input);
     const payer=deps.authUser?await deps.authUser(request):null;
+    if(payer&&!deps.ledger)return json({error:'Generation is temporarily unavailable.'},503);
     const paid=Boolean(payer&&deps.ledger);
     const admitted=paid
       ? await admitPaidPoseRequest(deps.db,{ownerId:guestOwnerId,requestKey,inputDigest,nowMs,ipHash,userId:payer!.id})
       : await admitTrialPoseRequest(deps.db,{ownerId:guestOwnerId,requestKey,inputDigest,nowMs,ipHash});
     if(admitted.kind==='limit')return json({error:paid?'Daily generation limit reached. Please try again tomorrow.':'The daily trial limit has been reached.'},429);
-    if(admitted.kind==='conflict')return json({error:'This request key was already used for different input.'},409);
+    if(admitted.kind==='conflict')return json({error:'This request key was already used for different input or identity.'},409);
     if(admitted.status!=='accepted')return json({id:admitted.id,status:admitted.status},202);
+    await storePoseTaskInput(deps.bucket,admitted.id,guestOwnerId,input);
     if(paid&&deps.ledger&&payer) {
-      const outcome=await deps.ledger.spend(payer.id,requestKey);
+      const outcome=await deps.ledger.spend(payer.id,requestKey,admitted.id);
       if(outcome!=='ok') {
-        // Roll back the admission so the same request can be retried after buying credits.
-        await deps.db.prepare('DELETE FROM pose_requests WHERE id = ? AND status = ?').bind(admitted.id,'accepted').run();
+        // A ledger error can be a lost response after a committed charge. Keep the
+        // admission and task ID so a retry cannot create a second charge.
         if(outcome==='insufficient')return json({error:'Not enough credits. Buy a pack from Pricing to continue.',status:'credits_required'},402);
         return json({error:'Generation is temporarily unavailable. Please try again later.'},503);
       }
     }
-    await storePoseTaskInput(deps.bucket,admitted.id,guestOwnerId,input);
     try {await deps.workflow.create({id:admitted.id,params:{jobId:admitted.id}});}
     catch {
       // A lost response or duplicate must never cause a second Workflow ID or provider key.
@@ -67,10 +68,11 @@ export async function createPoseJob(request:Request,deps:Dependencies):Promise<R
 }
 
 /** Recovery and status queries never create jobs or call the provider. */
-export async function recoverPoseJob(request:Request,deps:Pick<Dependencies,'db'|'cookieSecret'>):Promise<Response> {
+export async function recoverPoseJob(request:Request,deps:Pick<Dependencies,'db'|'cookieSecret'|'authUser'>):Promise<Response> {
   const ownerId=await poseSessionOwner(request,deps.cookieSecret),key=request.headers.get('idempotency-key');
   if(!ownerId)return json({error:'Session not found.'},401);
   if(!validKey(key))return json({error:'Invalid request key.'},400);
-  const row=await deps.db.prepare('SELECT id, status FROM pose_requests WHERE owner_id = ? AND request_key = ?').bind(ownerId,key).first<JobRow>();
+  const auth=deps.authUser?await deps.authUser(request):null;
+  const row=await deps.db.prepare('SELECT id, status FROM pose_requests WHERE owner_id = ? AND request_key = ? AND (user_id IS NULL OR user_id = ?)').bind(ownerId,key,auth?.id??null).first<JobRow>();
   return row?json(row):json({error:'Request not found.'},404);
 }

@@ -10,7 +10,8 @@ describe('pose workspace API', () => {
     const remoteHtml = renderToStaticMarkup(createElement(PoseGeneratorPreview, { ...props, apiMode: 'remote' }));
     expect(defaultHtml).toContain('Generation is not available here');
     expect(defaultHtml).not.toContain('Test integration');
-    expect(remoteHtml).toContain('Free tier: up to 3 requests per visitor each UTC day');
+    expect(remoteHtml).toContain('A limited guest trial may be available. Signed-in requests use one credit from a one-time pack.');
+    expect(remoteHtml).not.toContain('Free tier: up to 3 requests per visitor each UTC day');
   });
   it('retains both task id and key across refresh, including older saved records', () => {
     const id = '01234567-89ab-4cde-8fab-0123456789ab';

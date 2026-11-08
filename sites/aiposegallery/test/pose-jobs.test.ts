@@ -4,6 +4,54 @@ import { createPoseJob, recoverPoseJob } from '../src/site/pose-jobs.server';
 import { poseSessionOwner, startPoseSession } from '../src/site/pose-session.server';
 import { loadPoseTaskInput } from '../src/site/pose-task-input.server';
 
+it('does not charge or dispatch when input storage fails, and retries the same key', async () => {
+  const origin='https://aiposegallery.example', cookieSecret='s'.repeat(48);
+  const cookie=(await startPoseSession(new Request(origin,{method:'POST',headers:{origin}}),origin,cookieSecret)).headers.get('set-cookie')!.split(';')[0]!;
+  const key=`request_${crypto.randomUUID()}`;
+  const make=()=>{const form=new FormData();form.set('consent','yes');form.set('prompt','stand');return new Request(origin,{method:'POST',headers:{origin,cookie,'idempotency-key':key,'cf-connecting-ip':'203.0.113.1'},body:form});};
+  let charges=0, dispatches=0;
+  const ledger={spend:async()=>{charges++;return 'ok' as const;},refund:async()=>{}};
+  const workflow={create:async()=>{dispatches++;},get:async()=>({status:async()=>({status:'queued'})})};
+  const deps={db:env.DB,bucket:{put:async()=>{throw Error('R2 unavailable');}} as unknown as R2Bucket,workflow,origin,cookieSecret,ipHashSecret:'i'.repeat(48),authUser:async()=>({id:'user_test'}),ledger};
+  expect((await createPoseJob(make(),deps)).status).toBe(503);
+  expect(charges).toBe(0);
+  expect(dispatches).toBe(0);
+  expect((await createPoseJob(make(),{...deps,bucket:env.TEST_MEDIA as R2Bucket})).status).toBe(202);
+  expect(charges).toBe(1);
+  expect(dispatches).toBe(1);
+});
+
+it('rejects a different payer or guest on the same session and request key', async () => {
+  const origin='https://aiposegallery.example',cookieSecret='r'.repeat(48);
+  const cookie=(await startPoseSession(new Request(origin,{method:'POST',headers:{origin}}),origin,cookieSecret)).headers.get('set-cookie')!.split(';')[0]!;
+  const key=`request_${crypto.randomUUID()}`;
+  const make=()=>{const form=new FormData();form.set('consent','yes');form.set('prompt','stand');return new Request(origin,{method:'POST',headers:{origin,cookie,'idempotency-key':key,'cf-connecting-ip':'203.0.113.1'},body:form});};
+  const charges:string[]=[];const instances=new Set<string>();
+  const ledger={spend:async(userId:string)=>{charges.push(userId);return 'ok' as const;},refund:async()=>{}};
+  const workflow={async create({id}:{id:string}){instances.add(id);},async get(){return {async status(){return {status:'queued'};}};}};
+  const deps={db:env.DB,bucket:env.TEST_MEDIA as R2Bucket,workflow,origin,cookieSecret,ipHashSecret:'i'.repeat(48),ledger};
+  const first=await createPoseJob(make(),{...deps,authUser:async()=>({id:'user_alpha'})});
+  expect(first.status).toBe(202);
+  const responses=await Promise.all([null,{id:'user_bravo'}].map(user=>createPoseJob(make(),{...deps,authUser:async()=>user})));
+  expect(responses.map(response=>response.status)).toEqual([409,409]);
+  expect(charges).toEqual(['user_alpha']);
+  expect(instances.size).toBe(1);
+});
+
+it('rejects authenticated generation when its ledger is unavailable', async () => {
+  const origin='https://aiposegallery.example',cookieSecret='q'.repeat(48);
+  const cookie=(await startPoseSession(new Request(origin,{method:'POST',headers:{origin}}),origin,cookieSecret)).headers.get('set-cookie')!.split(';')[0]!;
+  const key=`request_${crypto.randomUUID()}`;
+  const form=new FormData();form.set('consent','yes');form.set('prompt','stand');
+  const request=new Request(origin,{method:'POST',headers:{origin,cookie,'idempotency-key':key,'cf-connecting-ip':'203.0.113.1'},body:form});
+  let dispatches=0;
+  const workflow={async create(){dispatches++;},async get(){return {async status(){return {status:'queued'};}};}};
+  const response=await createPoseJob(request,{db:env.DB,bucket:env.TEST_MEDIA as R2Bucket,workflow,origin,cookieSecret,ipHashSecret:'i'.repeat(48),authUser:async()=>({id:'user_test'})});
+  expect(response.status).toBe(503);
+  expect(dispatches).toBe(0);
+  expect(await env.DB.prepare('SELECT id FROM pose_requests WHERE request_key=?').bind(key).first()).toBeNull();
+});
+
 it('fails closed for absent or malformed Cloudflare IP and missing secret', async () => {
   const origin='https://aiposegallery.example', cookieSecret='x'.repeat(48);
   const cookie=(await startPoseSession(new Request(origin,{method:'POST',headers:{origin}}),origin,cookieSecret)).headers.get('set-cookie')!.split(';')[0]!;

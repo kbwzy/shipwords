@@ -1,5 +1,8 @@
 import { env } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
+import { createDb } from '@shipwords/core/db/client';
+import { getBalance, grantCredits } from '@shipwords/core/credits/ledger';
+import { poseLedger } from '../src/site/pose-billing.server';
 import { admitPoseRequest } from '../src/site/pose-admission.server';
 import { getPrivateImage, putPrivateImage } from '../src/site/private-media.server';
 import { poseInputDigest, storePoseTaskInput } from '../src/site/pose-task-input.server';
@@ -66,6 +69,63 @@ async function fixture(options: { submitLost?: boolean; resultFails?: boolean; s
 }
 
 describe('private pose workflow', () => {
+  it.each(['missing', 'invalid'] as const)('refunds a paid task when the prompt scanner is %s', async (mode) => {
+    const f = await fixture();
+    const userId = `user_${crypto.randomUUID()}`;
+    const db = createDb(env.DB);
+    const ledger = poseLedger(env.DB);
+    await grantCredits(db, { userId, amount: 1, idemKey: `grant:${f.id}`, source: 'test' });
+    expect(await ledger.spend(userId, 'request_test', f.id)).toBe('ok');
+    let attempts = 0;
+    const refund = async (key: string, id: string) => {
+      if (++attempts === 1) throw new Error('temporary ledger failure');
+      await ledger.refund(key, id);
+    };
+    const deps = createPoseWorkflowDependencies({
+      DB: env.DB, POSE_MEDIA: f.bucket, YIR_API_KEY: 'fake-test-only',
+      POSE_RESULT_HOSTS: 'cdn.example.test', POSE_UPLOAD_HOSTS: 'upload.example.test',
+      ...(mode === 'invalid' ? { WAFFO_MERCHANT_ID: 'invalid', WAFFO_PRIVATE_KEY: 'invalid', WAFFO_ENVIRONMENT: 'test' } : {}),
+    }, undefined, undefined, refund);
+    await expect(advancePoseWorkflow(deps, f.id)).rejects.toThrow('temporary ledger failure');
+    expect(await f.row()).toMatchObject({ status: 'failed', error_code: 'prompt_screening_unavailable', upstream_job_id: null });
+    expect((await getBalance(db, userId)).available).toBe(0);
+    expect(await recoverPoseWorkflow(deps, f.id)).toEqual({ status: 'failed', action: 'done', reason: 'failed' });
+    await advancePoseWorkflow(deps, f.id);
+    expect((await getBalance(db, userId)).available).toBe(1);
+    expect((await env.DB.prepare("SELECT count(*) AS n FROM credit_ledger WHERE idem_key = ? AND kind = 'refund'").bind(`refund:pose:task:${f.id}`).first<{n:number}>())?.n).toBe(1);
+    expect(f.counts.submit).toBe(0);
+  });
+  it.each(['failed', 'lost'] as const)('does not refund a paid task after submission when the outcome is %s', async (outcome) => {
+    const f = await fixture(outcome === 'lost' ? { submitLost: true } : { status: 'failed' });
+    const userId = `user_${crypto.randomUUID()}`;
+    const db = createDb(env.DB);
+    const ledger = poseLedger(env.DB);
+    await grantCredits(db, { userId, amount: 1, idemKey: `grant:${f.id}`, source: 'test' });
+    expect(await ledger.spend(userId, 'request_test', f.id)).toBe('ok');
+    const deps = { ...f.deps, refund: ledger.refund };
+    expect(await advancePoseWorkflow(deps, f.id)).toBe(outcome === 'lost' ? 'unknown' : 'failed');
+    await recoverPoseWorkflow(deps, f.id);
+    expect(f.counts.submit).toBe(1);
+    expect((await getBalance(db, userId)).available).toBe(0);
+    expect((await env.DB.prepare("SELECT count(*) AS n FROM credit_ledger WHERE idem_key = ? AND kind = 'refund'").bind(`refund:pose:task:${f.id}`).first<{n:number}>())?.n).toBe(0);
+  });
+
+  it('retries a failed pre-submit refund and never refunds an upstream failure', async () => {
+    const f = await fixture({promptAction:'block'});
+    let calls=0;
+    const deps={...f.deps, refund:async()=>{ calls++; if(calls===1) throw Error('ledger offline'); }};
+    await expect(advancePoseWorkflow(deps,f.id)).rejects.toThrow('ledger offline');
+    expect((await f.row())?.status).toBe('failed');
+    expect(await recoverPoseWorkflow(deps,f.id)).toEqual({status:'failed',action:'done',reason:'failed'});
+    expect(calls).toBe(2);
+    const paid = await fixture({status:'failed'});
+    let refunded=0;
+    const paidDeps={...paid.deps,refund:async()=>{refunded++;}};
+    expect(await advancePoseWorkflow(paidDeps,paid.id)).toBe('failed');
+    await recoverPoseWorkflow(paidDeps,paid.id);
+    expect(refunded).toBe(0);
+  });
+
   it('blocks a multi-person instruction before uploading references', async () => {
     const f = await fixture({ prompt: 'Two fully clothed adults standing together' });
     expect(await advancePoseWorkflow(f.deps, f.id)).toBe('failed');
@@ -200,6 +260,11 @@ describe('private pose workflow', () => {
 
   it('does not disturb an in-flight submission and preserves its returned ID', async () => {
     const f = await fixture();
+    const userId = `user_${crypto.randomUUID()}`;
+    const db = createDb(env.DB);
+    const ledger = poseLedger(env.DB);
+    await grantCredits(db, { userId, amount: 1, idemKey: `grant:${f.id}`, source: 'test' });
+    await ledger.spend(userId, 'request_test', f.id);
     let release!: () => void;
     let started!: () => void;
     const gate = new Promise<void>(resolve => { release = resolve; });
@@ -211,18 +276,86 @@ describe('private pose workflow', () => {
     } };
     const active = advancePoseWorkflow({...f.deps, client}, f.id);
     await entered;
-    expect(await recoverPoseWorkflow(f.deps, f.id)).toEqual({status:'submitting',action:'reconcile',reason:'submission_unknown'});
+    expect(await recoverPoseWorkflow({ ...f.deps, refund: ledger.refund }, f.id)).toEqual({status:'submitting',action:'reconcile',reason:'submission_unknown'});
+    expect((await getBalance(db, userId)).available).toBe(0);
     release();
     expect(await active).toBe('succeeded');
     expect((await f.row())?.upstream_job_id).toBe('job_123');
     expect(f.counts.submit).toBe(1);
   });
 
-  it('never submits or advances preparation during recovery', async () => {
+  it.each(['preparing', 'quoted'] as const)('refunds a terminal Workflow stuck in %s exactly once', async (status) => {
+    const f = await fixture();
+    const userId = `user_${crypto.randomUUID()}`;
+    const db = createDb(env.DB);
+    const ledger = poseLedger(env.DB);
+    await grantCredits(db, { userId, amount: 1, idemKey: `grant:${f.id}`, source: 'test' });
+    await ledger.spend(userId, 'request_test', f.id);
+    await env.DB.prepare('UPDATE pose_requests SET status = ? WHERE id = ?').bind(status, f.id).run();
+    const deps = { ...f.deps, refund: ledger.refund };
+    await Promise.all(Array.from({ length: 5 }, () => recoverPoseWorkflow(deps, f.id)));
+    expect(await f.row()).toMatchObject({ status: 'failed', error_code: 'workflow_pre_submit_failed', upstream_job_id: null });
+    expect((await getBalance(db, userId)).available).toBe(1);
+    expect((await env.DB.prepare("SELECT count(*) AS n FROM credit_ledger WHERE idem_key = ? AND kind = 'refund'").bind(`refund:pose:task:${f.id}`).first<{n:number}>())?.n).toBe(1);
+    expect(f.counts.submit).toBe(0);
+  });
+
+  it('retries an interrupted recovery refund using the real ledger', async () => {
+    const f = await fixture();
+    const userId = `user_${crypto.randomUUID()}`;
+    const db = createDb(env.DB);
+    const ledger = poseLedger(env.DB);
+    await grantCredits(db, { userId, amount: 1, idemKey: `grant:${f.id}`, source: 'test' });
+    await ledger.spend(userId, 'request_test', f.id);
+    await env.DB.prepare("UPDATE pose_requests SET status = 'preparing' WHERE id = ?").bind(f.id).run();
+    let calls = 0;
+    const deps = { ...f.deps, refund: async (key: string, id: string) => { if (++calls === 1) throw Error('ledger offline'); await ledger.refund(key, id); } };
+    await expect(recoverPoseWorkflow(deps, f.id)).rejects.toThrow('ledger offline');
+    expect(await f.row()).toMatchObject({ status: 'failed', error_code: 'workflow_pre_submit_failed' });
+    await Promise.all([recoverPoseWorkflow(deps, f.id), recoverPoseWorkflow(deps, f.id)]);
+    expect((await getBalance(db, userId)).available).toBe(1);
+    expect((await env.DB.prepare("SELECT count(*) AS n FROM credit_ledger WHERE idem_key = ? AND kind = 'refund'").bind(`refund:pose:task:${f.id}`).first<{n:number}>())?.n).toBe(1);
+  });
+
+  it('does not refund when a quoted row has an upstream ID', async () => {
+    const f = await fixture();
+    let refunds = 0;
+    await env.DB.prepare("UPDATE pose_requests SET status = 'quoted', upstream_job_id = 'job_123' WHERE id = ?").bind(f.id).run();
+    expect(await recoverPoseWorkflow({ ...f.deps, refund: async () => { refunds++; } }, f.id)).toEqual({ status: 'quoted', action: 'review', reason: 'preparation' });
+    expect(refunds).toBe(0);
+  });
+
+  it('races the real quoted submit CAS against recovery and never refunds a submitted task', async () => {
+    for (let i = 0; i < 8; i++) {
+      const f = await fixture({ status: 'running' });
+      const userId = `user_${crypto.randomUUID()}`;
+      const db = createDb(env.DB);
+      const ledger = poseLedger(env.DB);
+      await grantCredits(db, { userId, amount: 1, idemKey: `grant:${f.id}`, source: 'test' });
+      await ledger.spend(userId, 'request_test', f.id);
+      const interruptedDb = { prepare(sql: string) {
+        const statement = env.DB.prepare(sql);
+        return { bind(...args: unknown[]) {
+          if (sql.startsWith('UPDATE pose_requests') && args[0] === 'submitting') return { first: async () => { throw Error('pause before claim'); } };
+          return statement.bind(...args);
+        } };
+      } } as unknown as D1Database;
+      await expect(advancePoseWorkflow({ ...f.deps, db: interruptedDb }, f.id)).rejects.toThrow('pause before claim');
+      const deps = { ...f.deps, refund: ledger.refund };
+      await Promise.all([advancePoseWorkflow(deps, f.id), recoverPoseWorkflow(deps, f.id)]);
+      const row = await f.row();
+      const balance = (await getBalance(db, userId)).available;
+      expect(f.counts.submit).toBeLessThanOrEqual(1);
+      if (row?.status === 'failed') { expect(f.counts.submit).toBe(0); expect(balance).toBe(1); }
+      else { expect(f.counts.submit).toBe(1); expect(balance).toBe(0); expect(row?.status).toBe('submitted'); }
+    }
+  });
+
+  it('never submits or advances accepted tasks during recovery', async () => {
     const f = await fixture();
     expect(await recoverPoseWorkflow(f.deps, f.id)).toEqual({status:'accepted',action:'review',reason:'preparation'});
     await env.DB.prepare("UPDATE pose_requests SET status='quoted' WHERE id=?").bind(f.id).run();
-    expect(await recoverPoseWorkflow(f.deps, f.id)).toEqual({status:'quoted',action:'review',reason:'preparation'});
+    expect(await recoverPoseWorkflow(f.deps, f.id)).toEqual({status:'failed',action:'done',reason:'failed'});
     expect(f.counts.submit).toBe(0);
   });
 
@@ -238,7 +371,7 @@ describe('private pose workflow', () => {
     await expect(advancePoseWorkflow({...f.deps, db}, f.id)).rejects.toThrow('interrupted before submit');
     expect((await f.row())?.status).toBe('quoted');
     expect(await f.bucket.get(`pose-tasks/${f.id}/quoted-request.json`)).not.toBeNull();
-    expect(await recoverPoseWorkflow(f.deps, f.id)).toEqual({status:'quoted',action:'review',reason:'preparation'});
+    expect(await recoverPoseWorkflow(f.deps, f.id)).toEqual({status:'failed',action:'done',reason:'failed'});
     expect(f.counts.submit).toBe(0);
   });
 

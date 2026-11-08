@@ -1,6 +1,9 @@
 import { env } from 'cloudflare:test';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { schedulePoseRecoveries, POSE_RECOVERY_MIN_COOLDOWN_MS } from '../src/site/pose-recovery-scheduler.server';
+import { schedulePoseRecoveries, schedulePoseRefunds, POSE_RECOVERY_MIN_COOLDOWN_MS } from '../src/site/pose-recovery-scheduler.server';
+import { createDb } from '@shipwords/core/db/client';
+import { getBalance, grantCredits } from '@shipwords/core/credits/ledger';
+import { poseLedger } from '../src/site/pose-billing.server';
 import type { PoseWorkflowDependencies } from '../src/site/pose-workflow.server';
 
 const start = 2_000_000_000_000;
@@ -31,10 +34,52 @@ beforeEach(async () => {
 });
 
 describe('pose recovery scheduling on D1', () => {
+  it('refunds a proven pre-submit failure without a provider or Workflow and is idempotent', async () => {
+    const id = await add('failed', 'prompt_blocked');
+    const user = `payer_${id}`, key = `key_${id}`;
+    await env.DB.prepare('UPDATE pose_requests SET user_id = ? WHERE id = ?').bind(user, id).run();
+    await grantCredits(createDb(env.DB), { userId: user, amount: 1, idemKey: `grant:${id}`, source: 'test' });
+    await poseLedger(env.DB).spend(user, key, id);
+    await Promise.all([schedulePoseRefunds(env.DB, { now: () => now }), schedulePoseRefunds(env.DB, { now: () => now })]);
+    await schedulePoseRefunds(env.DB, { now: () => now });
+    expect((await getBalance(createDb(env.DB), user)).available).toBe(1);
+    expect((await env.DB.prepare("SELECT count(*) AS n FROM credit_ledger WHERE idem_key = ? AND kind = 'refund'").bind(`refund:pose:task:${id}`).first<{n:number}>())?.n).toBe(1);
+  });
+
+  it('retries after a ledger write fails and the lease expires', async () => {
+    const id = await add('failed', 'quote_expired_or_invalid'), user = `payer_${id}`;
+    await env.DB.prepare('UPDATE pose_requests SET user_id = ? WHERE id = ?').bind(user, id).run();
+    await grantCredits(createDb(env.DB), { userId: user, amount: 1, idemKey: `grant:${id}`, source: 'test' });
+    await poseLedger(env.DB).spend(user, `key_${id}`, id);
+    await env.DB.exec("CREATE TRIGGER fail_pose_refund BEFORE INSERT ON credit_ledger WHEN NEW.kind = 'refund' BEGIN SELECT RAISE(ABORT, 'temporary ledger failure'); END");
+    try {
+      await schedulePoseRefunds(env.DB, { now: () => now });
+      expect((await getBalance(createDb(env.DB), user)).available).toBe(0);
+    } finally { await env.DB.exec('DROP TRIGGER fail_pose_refund'); }
+    now += 31 * POSE_RECOVERY_MIN_COOLDOWN_MS;
+    await schedulePoseRefunds(env.DB, { now: () => now });
+    expect((await getBalance(createDb(env.DB), user)).available).toBe(1);
+  });
+
+  it('does not refund ambiguous failures or mismatched task ownership', async () => {
+    // The last row is a clean pre-submit failure but carries no task-scoped charge
+    // (a guest trial), so the scheduler must leave it untouched.
+    const statuses = [['failed','upstream_failed'], ['failed','workflow_retry_exhausted'], ['unknown','prompt_blocked'], ['submitted','prompt_blocked'], ['failed','prompt_blocked'], ['failed','prompt_blocked']] as const;
+    const ids: string[] = [];
+    for (const [i, [status, error]] of statuses.entries()) {
+      const id = await add(status, error), user = `payer_${id}`;
+      ids.push(id);
+      await env.DB.prepare('UPDATE pose_requests SET user_id = ?, upstream_job_id = ? WHERE id = ?').bind(i === 4 ? 'other' : user, i === 3 ? `job_${id}` : null, id).run();
+      await grantCredits(createDb(env.DB), { userId: user, amount: 1, idemKey: `grant:${id}`, source: 'test' });
+      if (i !== 5) await poseLedger(env.DB).spend(user, `key_${id}`, id);
+    }
+    await schedulePoseRefunds(env.DB, { now: () => now });
+    for (const id of ids) expect(await env.DB.prepare('SELECT id FROM credit_ledger WHERE idem_key = ?').bind(`refund:pose:task:${id}`).first()).toBeNull();
+  });
   it('only recovers cooled marked eligible states, obeys the limit and preserves quota rows', async () => {
     const first = await add('submitted', 'workflow_poll_exhausted', start - 900000);
     const second = await add('submitted', 'workflow_retry_exhausted', start - 800000);
-    await add('submitted', null); await add('submitted', 'result_expired');
+    await add('submitted', 'result_expired');
     await add('submitted', 'workflow_poll_exhausted', start - 1);
     await add('submitting', 'workflow_retry_exhausted'); await add('unknown', 'workflow_poll_exhausted');
     await add('accepted', 'workflow_retry_exhausted'); await add('failed', 'workflow_retry_exhausted');
@@ -45,6 +90,18 @@ describe('pose recovery scheduling on D1', () => {
     expect((await schedule(deps(), { limit: 1 })).attempted).toBe(1);
     expect(polls).toEqual([`job_${first}`, `job_${second}`]);
     expect(await env.DB.prepare('SELECT count(*) AS n FROM pose_requests').first()).toEqual(before);
+  });
+
+  it('recovers historical null updated_at rows without starving later tasks', async () => {
+    const historical = await add('submitted', 'workflow_poll_exhausted');
+    await env.DB.prepare('UPDATE pose_requests SET updated_at = NULL WHERE id = ?').bind(historical).run();
+    const later = await add('submitted', 'workflow_poll_exhausted', start - 900000);
+
+    expect(await schedule(deps(), { limit: 2 })).toEqual({ attempted: 2, locked: 0 });
+    expect(polls).toEqual([`job_${historical}`, `job_${later}`]);
+    const claim = await env.DB.prepare('SELECT attempts, claim_token FROM pose_recovery_schedule WHERE request_id = ?')
+      .bind(historical).first<{attempts:number; claim_token:string|null}>();
+    expect(claim).toEqual({ attempts: 1, claim_token: null });
   });
 
   it('shares the lock and exponential cooldown across concurrent scheduler instances', async () => {
@@ -155,6 +212,68 @@ describe('pose recovery scheduling on D1', () => {
     expect(polls).toEqual([]);
     now += POSE_RECOVERY_MIN_COOLDOWN_MS;
     workflowError = false; workflowStatus = 'complete';
+    expect((await schedule(deps())).attempted).toBe(1);
+    expect(polls).toEqual([`job_${id}`]);
+  });
+
+  it('does not recreate a terminal paid accepted Workflow', async () => {
+    const id = crypto.randomUUID();
+    const owner = `guest_${'c'.repeat(64)}`;
+    const { storePoseTaskInput, poseInputDigest } = await import('../src/site/pose-task-input.server');
+    const input = { prompt: 'a portrait' };
+    await env.DB.prepare("INSERT INTO pose_requests (id, owner_id, request_key, input_digest, day, status, created_at, user_id) VALUES (?, ?, ?, ?, '2026-01-01', 'accepted', ?, 'payer')")
+      .bind(id, owner, `key_${id}`, await poseInputDigest(input), start - POSE_RECOVERY_MIN_COOLDOWN_MS).run();
+    await storePoseTaskInput(env.TEST_MEDIA as R2Bucket, id, owner, input);
+    await env.DB.prepare("INSERT INTO credit_ledger (id,user_id,kind,delta,idem_key,ref) VALUES (?, 'payer','spend',-1,?,'pose-image')").bind(`ledger_${id}`, `spend:pose:task:${id}`).run();
+    const creates: string[] = [];
+    const binding = { ...workflowBinding, create: async ({id}: {id:string}) => { creates.push(id); } };
+    workflowStatus = 'terminated';
+    expect((await schedulePoseRecoveries(deps(), {workflow: binding})).attempted).toBe(0);
+    expect(creates).toEqual([]);
+  });
+
+  it('does not automatically dispatch a paid accepted task even with durable matching input', async () => {
+    const id = crypto.randomUUID();
+    const owner = `guest_${'a'.repeat(64)}`;
+    const { storePoseTaskInput, poseInputDigest } = await import('../src/site/pose-task-input.server');
+    const input = { prompt: 'a portrait' };
+    await env.DB.prepare("INSERT INTO pose_requests (id, owner_id, request_key, input_digest, day, status, created_at, user_id) VALUES (?, ?, ?, ?, '2026-01-01', 'accepted', ?, 'payer')")
+      .bind(id, owner, `key_${id}`, await poseInputDigest(input), start - POSE_RECOVERY_MIN_COOLDOWN_MS).run();
+    await storePoseTaskInput(env.TEST_MEDIA as R2Bucket, id, owner, input);
+    const creates: string[] = [];
+    const binding = { ...workflowBinding, create: async ({id}: {id:string}) => { creates.push(id); } };
+    expect((await schedulePoseRecoveries(deps(), {workflow: binding})).attempted).toBe(0);
+    await env.DB.prepare("INSERT INTO credit_ledger (id,user_id,kind,delta,idem_key,ref) VALUES (?, 'payer','spend',-1,?,'pose-image')").bind(`ledger_${id}`, `spend:pose:task:${id}`).run();
+    expect((await schedulePoseRecoveries(deps(), {workflow: binding})).attempted).toBe(0);
+    expect(creates).toEqual([]);
+  });
+
+  it('does not dispatch accepted tasks with mismatched, refunded, or missing payment and input', async () => {
+    const { storePoseTaskInput, poseInputDigest } = await import('../src/site/pose-task-input.server');
+    const owner = `guest_${'b'.repeat(64)}`, input = {prompt:'portrait'};
+    const digest = await poseInputDigest(input);
+    const ids = Array.from({length: 5}, () => crypto.randomUUID());
+    for (const [index, id] of ids.entries()) {
+      await env.DB.prepare("INSERT INTO pose_requests (id,owner_id,request_key,input_digest,day,status,created_at,user_id) VALUES (?,?,?,?,'day','accepted',? ,?)")
+        .bind(id, owner, `key_${id}`, digest, start - POSE_RECOVERY_MIN_COOLDOWN_MS, index === 4 ? null : 'payer').run();
+      if (index !== 3) await storePoseTaskInput(env.TEST_MEDIA as R2Bucket,id,owner,input);
+      if (index !== 0) await env.DB.prepare("INSERT INTO credit_ledger (id,user_id,kind,delta,idem_key,ref) VALUES (?,?,'spend',-1,?,'pose-image')")
+        .bind(`spend_${id}`, index === 1 ? 'other' : 'payer', `spend:pose:task:${id}`).run();
+    }
+    await env.DB.prepare("INSERT INTO credit_ledger (id,user_id,kind,delta,idem_key) VALUES ('refund','payer','refund',1,?)").bind(`refund:pose:task:${ids[2]}`).run();
+    const creates: string[] = [];
+    const binding = { ...workflowBinding, create: async ({id}: {id:string}) => { creates.push(id); } };
+    expect((await schedulePoseRecoveries(deps(), {workflow:binding})).attempted).toBe(0);
+    expect(creates).toEqual([]);
+  });
+
+  it('recovers a hard-killed terminal Workflow with a persisted upstream ID and no marker', async () => {
+    const id = await add('submitted', null);
+    workflowStatus = 'running';
+    expect((await schedule(deps())).attempted).toBe(0);
+    expect(polls).toEqual([]);
+    now += POSE_RECOVERY_MIN_COOLDOWN_MS;
+    workflowStatus = 'terminated';
     expect((await schedule(deps())).attempted).toBe(1);
     expect(polls).toEqual([`job_${id}`]);
   });

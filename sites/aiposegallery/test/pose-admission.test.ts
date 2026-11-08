@@ -35,6 +35,30 @@ describe('pose admission in D1', () => {
     expect(row?.ip_hash).toBe(ipHash);
     expect(JSON.stringify(row)).not.toContain('203.0.113');
   });
+  it('binds concurrent retries to the persisted user identity, including guests', async () => {
+    const input={ownerId:`owner_${crypto.randomUUID()}`,requestKey:'request-identity-01',inputDigest:'a'.repeat(64),nowMs:Date.UTC(2062,0,1),dailySiteLimit:100,dailyOwnerLimit:100,dailyIpLimit:100,ipHash:'1'.repeat(64)};
+    const identities=[null,'user_alpha','user_bravo'] as const;
+    const results=await Promise.all(Array.from({length:45},(_,i)=>admitPoseRequest(env.DB,{...input,userId:identities[i%3]})));
+    const accepted=results.findIndex(result=>result.kind==='accepted');
+    expect(accepted).toBeGreaterThanOrEqual(0);
+    const winner=identities[accepted%3];
+    const row=await env.DB.prepare('SELECT user_id FROM pose_requests WHERE owner_id=? AND request_key=?').bind(input.ownerId,input.requestKey).first<{user_id:string|null}>();
+    expect(row?.user_id).toBe(winner);
+    results.forEach((result,i)=>expect(result.kind).toBe(i===accepted?'accepted':identities[i%3]===winner?'existing':'conflict'));
+    for(const userId of identities) {
+      expect((await admitPoseRequest(env.DB,{...input,userId})).kind).toBe(userId===winner?'existing':'conflict');
+    }
+  });
+
+  it('rejects every different identity after an admission, regardless of ordering', async () => {
+    const identities=[null,'user_alpha','user_bravo'] as const;
+    for(const userId of identities) {
+      const input={ownerId:`owner_${crypto.randomUUID()}`,requestKey:'request-identity-02',inputDigest:'b'.repeat(64),nowMs:Date.UTC(2063,0,1),dailySiteLimit:100,dailyOwnerLimit:100,dailyIpLimit:100,ipHash:'2'.repeat(64),userId};
+      expect((await admitPoseRequest(env.DB,input)).kind).toBe('accepted');
+      for(const retryId of identities) expect((await admitPoseRequest(env.DB,{...input,userId:retryId})).kind).toBe(retryId===userId?'existing':'conflict');
+    }
+  });
+
   it('deduplicates concurrent requests and enforces the daily cap across owners', async () => {
     const prefix = crypto.randomUUID();
     const nowMs = Date.UTC(2026, 9, 29);

@@ -42,7 +42,7 @@ export function LandingPlans({ page = false }: { page?: boolean }) {
       <div className="landing-plans__heading">
         <p className="landing-plans__eyebrow">CURRENT PRICING</p>
         <Heading id="landing-pricing-title">Pick your <em>pack.</em></Heading>
-        <p>One-time credit packs for image generation. The gallery stays free, and every visitor gets 3 free image generations each UTC day.</p>
+        <p>One-time credit packs for image generation. Browsing and downloading the pose gallery is free; image generations use credits from a pack you buy once.</p>
       </div>
       <div className="landing-plans__cards">
         {site.products.map((product) => (

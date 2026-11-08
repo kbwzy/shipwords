@@ -1,6 +1,6 @@
 import { POSE_TRIAL_LIMITS } from './pose-limits.server.ts';
 
-type AdmissionRow = { id: string; input_digest: string; status: string };
+type AdmissionRow = { id: string; input_digest: string; status: string; user_id: string | null };
 type AdmissionResult =
   | { kind: 'accepted'; id: string; status: string }
   | { kind: 'existing'; id: string; status: string }
@@ -68,9 +68,9 @@ export async function admitPoseRequest(db: D1Database, input: {
     ON CONFLICT(owner_id, request_key) DO NOTHING
     RETURNING id, input_digest, status`).bind(id, ownerId, requestKey, inputDigest, day, nowMs, ipHash, userId, day, dailySiteLimit, ownerId, day, dailyOwnerLimit, ipHash, day, dailyIpLimit).first<AdmissionRow>();
   if (inserted) return { kind: 'accepted', id: inserted.id, status: inserted.status };
-  const existing = await db.prepare('SELECT id, input_digest, status FROM pose_requests WHERE owner_id = ? AND request_key = ?').bind(ownerId, requestKey).first<AdmissionRow>();
+  const existing = await db.prepare('SELECT id, input_digest, status, user_id FROM pose_requests WHERE owner_id = ? AND request_key = ?').bind(ownerId, requestKey).first<AdmissionRow>();
   if (!existing) return { kind: 'limit' };
-  return existing.input_digest === inputDigest ? { kind: 'existing', id: existing.id, status: existing.status } : { kind: 'conflict' };
+  return existing.input_digest === inputDigest && existing.user_id === userId ? { kind: 'existing', id: existing.id, status: existing.status } : { kind: 'conflict' };
 }
 /** Public trial admission always uses the server-owned limits; a request body cannot raise them. */
 export function admitTrialPoseRequest(db: D1Database, input: {ownerId:string;requestKey:string;inputDigest:string;nowMs:number;ipHash:string}) {

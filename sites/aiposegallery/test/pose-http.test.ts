@@ -45,15 +45,92 @@ it('exposes an actionable recovery state when admission or workflow dispatch is 
   const admitted=await admitTrialPoseRequest(env.DB,{ownerId:ownerId!,requestKey:key,inputDigest:'a'.repeat(64),nowMs:Date.now(),ipHash:'1'.repeat(64)});
   if(admitted.kind!=='accepted')throw new Error('not admitted');
   const get=()=>handlePoseHttp(new Request(`${origin}/api/pose/jobs/${admitted.id}`,{headers:{cookie}}),deps).then(r=>r.json() as Promise<{status:string}>);
-  expect((await get()).status).toBe('input_required');
+  expect((await get()).status).toBe('needs_attention');
   await deps.bucket.put(`pose-tasks/${admitted.id}/manifest.json`,'{}');
-  expect((await get()).status).toBe('input_required');
+  expect((await get()).status).toBe('needs_attention');
   exists=true;
   expect((await get()).status).toBe('accepted');
   state='complete';
   expect((await get()).status).toBe('needs_attention');
   await env.DB.prepare("UPDATE pose_requests SET status='unknown' WHERE id=?").bind(admitted.id).run();
   expect((await get()).status).toBe('needs_attention');
+});
+
+it('keeps uncertain accepted guest and paid tasks safe across status, recovery and history',async()=>{
+  const origin='https://aiposegallery.example',cookieSecret='s'.repeat(48);
+  let workflowState='queued';
+  const workflow={async create(){},async get(){if(workflowState==='get_error')throw new Error('unavailable');return {async status(){if(workflowState==='status_error')throw new Error('unavailable');return {status:workflowState};}};}};
+  const deps={db:env.DB,bucket:env.TEST_MEDIA as R2Bucket,workflow,origin,cookieSecret,ipHashSecret:'i'.repeat(48),
+    authUser:async(request:Request)=>{const id=request.headers.get('x-test-user');return id?{id}:null;},
+    ledger:{spend:async()=>'ok' as const,refund:async()=>{}}};
+  const session=async()=>(await handlePoseHttp(new Request(`${origin}/api/pose/session`,{method:'POST',headers:{origin}}),deps)).headers.get('set-cookie')!.split(';')[0]!;
+  const cookie=await session(),otherCookie=await session();
+  const create=async(user?:string)=>{const key=`request_${crypto.randomUUID()}`,form=new FormData();form.set('consent','yes');form.set('prompt','stand');
+    const headers=new Headers({origin,cookie,'idempotency-key':key,'cf-connecting-ip':'192.0.2.43'});if(user)headers.set('x-test-user',user);
+    const response=await handlePoseHttp(new Request(`${origin}/api/pose/jobs`,{method:'POST',headers,body:form}),deps);
+    expect(response.status).toBe(202);return {...await response.json() as {id:string},key};};
+  const guest=await create(),paid=await create('paid_owner');
+  const request=(job:{id:string;key:string},kind:'status'|'recover',identity:string,user?:string)=>{
+    const headers=new Headers({cookie:identity});if(user)headers.set('x-test-user',user);if(kind==='recover')headers.set('idempotency-key',job.key);
+    return handlePoseHttp(new Request(`${origin}${kind==='recover'?'/api/pose/recover':`/api/pose/jobs/${job.id}`}`,{headers}),deps);
+  };
+  for(const state of ['unknown','errored','terminated','complete','get_error','status_error']) {
+    workflowState=state;
+    for(const [job,user] of [[guest,undefined],[paid,'paid_owner']] as const) {
+      for(const kind of ['status','recover'] as const) {
+        const response=await request(job,kind,cookie,user);
+        expect(response.status,`${state} ${kind}`).toBe(200);
+        expect(await response.json(),`${state} ${kind}`).toMatchObject({id:job.id,status:'needs_attention'});
+      }
+    }
+    const list=await handlePoseHttp(new Request(`${origin}/api/pose/jobs`,{headers:{'x-test-user':'paid_owner'}}),deps);
+    const body=await list.json() as {jobs:Array<{id:string;status:string}>};
+    expect(body.jobs.find(job=>job.id===paid.id),state).toMatchObject({id:paid.id,status:'needs_attention'});
+  }
+  expect((await request(guest,'status',otherCookie)).status).toBe(404);
+  expect((await request(guest,'recover',otherCookie)).status).toBe(404);
+  for(const kind of ['status','recover'] as const)expect((await request(paid,kind,cookie,'other_user')).status).toBe(404);
+  workflowState='queued';
+  await deps.bucket.delete(`pose-tasks/${guest.id}/manifest.json`);
+  await deps.bucket.delete(`pose-tasks/${paid.id}/manifest.json`);
+  for(const [job,user] of [[guest,undefined],[paid,'paid_owner']] as const) {
+    for(const kind of ['status','recover'] as const)expect(await (await request(job,kind,cookie,user)).json()).toMatchObject({id:job.id,status:'needs_attention'});
+  }
+  const list=await handlePoseHttp(new Request(`${origin}/api/pose/jobs`,{headers:{'x-test-user':'paid_owner'}}),deps);
+  expect((await list.json() as {jobs:Array<{id:string;status:string}>}).jobs.find(job=>job.id===paid.id)).toMatchObject({id:paid.id,status:'needs_attention'});
+});
+
+it('enforces paid account identity for status, result and recovery while retaining guest cookie ownership',async()=>{
+  const origin='https://aiposegallery.example',cookieSecret='a'.repeat(48);
+  const workflow={async create(){},async get(){return {async status(){return {status:'queued'};}};}};
+  const deps={db:env.DB,bucket:env.TEST_MEDIA as R2Bucket,workflow,origin,cookieSecret,ipHashSecret:'i'.repeat(48),
+    authUser:async(request:Request)=>{const id=request.headers.get('x-test-user');return id?{id}:null;},
+    ledger:{spend:async()=>'ok' as const,refund:async()=>{}}};
+  const session=async()=>(await handlePoseHttp(new Request(`${origin}/api/pose/session`,{method:'POST',headers:{origin}}),deps)).headers.get('set-cookie')!.split(';')[0]!;
+  const cookie=await session(),otherCookie=await session();
+  const create=async(user?:string)=>{const key=`request_${crypto.randomUUID()}`,form=new FormData();form.set('consent','yes');form.set('prompt','stand');
+    const headers=new Headers({origin,cookie,'idempotency-key':key,'cf-connecting-ip':'192.0.2.42'});if(user)headers.set('x-test-user',user);
+    const response=await handlePoseHttp(new Request(`${origin}/api/pose/jobs`,{method:'POST',headers,body:form}),deps);
+    expect(response.status).toBe(202);return {...await response.json() as {id:string},key};};
+  const paid=await create('user_a'),guest=await create();
+  const owner=await poseSessionOwner(new Request(origin,{headers:{cookie}}),cookieSecret);
+  const png=Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='),c=>c.charCodeAt(0));
+  const output=await putPrivateImage(deps.bucket,owner!,'result',png,'image/png');
+  for(const job of [paid,guest])await env.DB.prepare("UPDATE pose_requests SET status='succeeded', output_key=? WHERE id=?").bind(output,job.id).run();
+  const request=async(job:{id:string;key:string},kind:'status'|'result'|'recover',sessionCookie?:string,user?:string)=>{
+    const headers=new Headers();if(sessionCookie)headers.set('cookie',sessionCookie);if(user)headers.set('x-test-user',user);
+    if(kind==='recover')headers.set('idempotency-key',job.key);
+    return handlePoseHttp(new Request(`${origin}${kind==='recover'?'/api/pose/recover':`/api/pose/jobs/${job.id}${kind==='result'?'/result':''}`}`,{headers}),deps);
+  };
+  for(const kind of ['status','result','recover'] as const){
+    expect.soft((await request(paid,kind,cookie,'user_a')).status,`paid ${kind} A`).toBe(200);
+    expect.soft((await request(paid,kind,cookie,'user_b')).status,`paid ${kind} B`).toBe(404);
+    expect.soft((await request(paid,kind,cookie)).status,`paid ${kind} logged out`).toBe(404);
+    expect.soft((await request(guest,kind,cookie)).status,`guest ${kind} logged out`).toBe(200);
+    expect.soft((await request(guest,kind,cookie,'user_b')).status,`guest ${kind} B`).toBe(200);
+    expect.soft((await request(guest,kind,otherCookie,'user_a')).status,`guest ${kind} other cookie`).toBe(404);
+  }
+  for(const kind of ['status','result'] as const)expect.soft((await request(paid,kind,undefined,'user_a')).status,`paid ${kind} without cookie`).toBe(200);
 });
 
 it('lists paid pose results for the signed-in user and lets them open results without the pose session',async()=>{
