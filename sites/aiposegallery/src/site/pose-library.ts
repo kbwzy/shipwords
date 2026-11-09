@@ -2033,3 +2033,10 @@ export function posesInCategory(slug: PoseCategoryEntry['slug']): readonly Pose[
   const entry = POSE_CATEGORY_BY_SLUG.get(slug);
   return entry ? POSES.filter((candidate) => candidate.category === entry.category) : [];
 }
+
+/**
+ * Date of the last content change in this library (pose list, copy, or categories), as YYYY-MM-DD. Bump it whenever the
+ * data above changes; the sitemap uses it as the lastmod for every pose-library-derived page, so the value stays
+ * truthful instead of drifting with every deploy.
+ */
+export const POSE_LIBRARY_LAST_MODIFIED = '2026-11-08';

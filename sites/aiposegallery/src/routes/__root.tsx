@@ -49,7 +49,7 @@ function Layout() {
           <span>pose<span className="brand-light">gallery</span><small>AI REFERENCE LIBRARY</small></span>
         </Link>
         <nav aria-label="Main navigation">
-          <a href="/#gallery">Explore poses</a>
+          <Link to="/poses">Explore poses</Link>
           <a href="/#how-it-works">How to use</a>
           <Link to="/pricing" className="nav-plans">Pricing</Link>
           <a className="nav-button" href="/#create">Explore the studio <Icon name="arrow" className="icon" /></a>

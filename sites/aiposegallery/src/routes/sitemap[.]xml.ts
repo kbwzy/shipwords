@@ -1,7 +1,7 @@
 import { absoluteUrl, sitemapXml } from '@shipwords/core/seo';
 import { createFileRoute } from '@tanstack/react-router';
 import site from '../../site.config';
-import { POSES, POSE_CATEGORIES, POSE_VIEWS, poseViewAlt, poseViewImage } from '~/site/pose-library';
+import { POSES, POSE_CATEGORIES, POSE_VIEWS, POSE_LIBRARY_LAST_MODIFIED, poseViewAlt, poseViewImage } from '~/site/pose-library';
 
 // Register new indexable pages here.
 export const PAGES = [
@@ -17,6 +17,13 @@ export const PAGES = [
   ...POSE_CATEGORIES.map((entry) => `/poses/category/${entry.slug}`),
   ...POSES.map((pose) => `/poses/${pose.slug}`),
 ];
+
+// Pages whose rendered content is generated from the pose library (home gallery, pose hub, categories, pose pages)
+// share the library's last content-change date as their lastmod. Legal and policy pages have no honest per-page date,
+// so they ship without one rather than a fake deploy timestamp.
+const SITEMAP_ENTRIES = PAGES.map((path) =>
+  path === '/' || path.startsWith('/poses') ? { path, lastmod: POSE_LIBRARY_LAST_MODIFIED } : { path },
+);
 
 const escapeXml = (value: string) =>
   value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -56,11 +63,7 @@ export function imageSitemapXml(): Response {
 export const Route = createFileRoute('/sitemap.xml')({
   server: {
     handlers: {
-      GET: () =>
-        sitemapXml(
-          site,
-          PAGES.map((path) => ({ path })),
-        ),
+      GET: () => sitemapXml(site, SITEMAP_ENTRIES),
     },
   },
 });
