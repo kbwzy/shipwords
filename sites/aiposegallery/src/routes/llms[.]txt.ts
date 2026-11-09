@@ -11,5 +11,6 @@ export const Route = createFileRoute('/llms.txt')({
     ...POSES.map((pose) => ({ title: pose.title, path: `/poses/${pose.slug}`, description: pose.summary })),
     { title: 'Acceptable use policy', path: '/acceptable-use', description: 'Content and conduct rules, including sexual content, violence, hate, CSAM, deepfakes and infringement.' },
     { title: 'Privacy policy', path: '/privacy', description: 'How the site handles technical, account and payment data.' },
+    { title: 'Partners', path: '/partners', description: 'Directories and launchpads that list AI Pose Gallery, with the badge links those free listings require.' },
   ]) } },
 });

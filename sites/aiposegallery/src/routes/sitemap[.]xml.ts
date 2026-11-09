@@ -12,6 +12,7 @@ export const PAGES = [
   '/refunds',
   '/dmca',
   '/pricing',
+  '/partners',
   '/pose-generator',
   '/poses',
   ...POSE_CATEGORIES.map((entry) => `/poses/category/${entry.slug}`),

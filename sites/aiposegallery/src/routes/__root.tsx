@@ -79,7 +79,7 @@ function Layout() {
       <footer className="site-footer">
         <div><span className="footer-brand"><Icon name="mark" className="footer-mark" /> posegallery</span><p>A little more reference, a little less guesswork.</p></div>
         <div className="footer-links">
-          <Link to="/pricing">Pricing</Link><Link to="/privacy">Privacy</Link><Link to="/terms">Terms</Link>
+          <Link to="/pricing">Pricing</Link><Link to="/privacy">Privacy</Link><Link to="/terms">Terms</Link><Link to="/partners">Partners</Link>
           <Link to="/acceptable-use">Acceptable use</Link><Link to="/refunds">Refunds</Link><Link to="/dmca">DMCA</Link>
           <a href={`mailto:${SUPPORT_EMAIL}`}>Contact</a>
         </div>
